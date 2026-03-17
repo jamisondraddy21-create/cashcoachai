@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CashCoachAI — Personal Finance Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+
+<!-- ═══ NAVBAR ═══ -->
+<nav class="navbar">
+  <div class="nav-brand">
+    <span class="nav-logo">💰</span>
+    <span class="nav-title">CashCoach<span class="accent">AI</span></span>
+  </div>
+  <div class="nav-tabs" id="navTabs">
+    <button class="nav-tab" data-view="dashboard" onclick="navigate('dashboard')">📊 Dashboard</button>
+    <button class="nav-tab" data-view="tracker"   onclick="navigate('tracker')">📝 Tracker</button>
+    <button class="nav-tab" data-view="advisor"   onclick="navigate('advisor')">💬 AI Advisor</button>
+  </div>
+  <button class="btn-reset" onclick="resetApp()" title="Start over">↺ Reset</button>
+</nav>
+
+<!-- ═══ SETUP WIZARD ═══ -->
+<div class="view" id="view-setup">
+  <div class="setup-container">
+
+    <!-- Progress bar -->
+    <div class="setup-progress">
+      <div class="progress-steps">
+        <div class="progress-step" id="prog-1"><div class="step-dot">1</div><span>Income</span></div>
+        <div class="progress-line" id="line-1"></div>
+        <div class="progress-step" id="prog-2"><div class="step-dot">2</div><span>Bills</span></div>
+        <div class="progress-line" id="line-2"></div>
+        <div class="progress-step" id="prog-3"><div class="step-dot">3</div><span>Spending</span></div>
+      </div>
+    </div>
+
+    <!-- Step 1 — Income -->
+    <div class="setup-step" id="step-1">
+      <div class="setup-card">
+        <div class="setup-icon">💵</div>
+        <h2>What's your monthly income?</h2>
+        <p class="setup-sub">Enter your total take-home pay after taxes</p>
+        <div class="input-group-dollar">
+          <span class="dollar-prefix">$</span>
+          <input type="number" id="incomeInput" class="input-large" placeholder="5,000" min="0" step="100" />
+        </div>
+        <button class="btn-primary btn-lg" onclick="nextStep(1)">Continue →</button>
+      </div>
+    </div>
+
+    <!-- Step 2 — Bills -->
+    <div class="setup-step" id="step-2">
+      <div class="setup-card setup-card-wide">
+        <div class="setup-icon">🧾</div>
+        <h2>What are your monthly bills?</h2>
+        <p class="setup-sub">Add all your fixed recurring expenses</p>
+        <div class="bill-form">
+          <input type="text"   id="billName"     class="input-field" placeholder="Bill name (e.g. Rent)" />
+          <select              id="billCategory" class="input-field">
+            <option value="Housing">🏠 Housing</option>
+            <option value="Transportation">🚗 Transportation</option>
+            <option value="Utilities">💡 Utilities</option>
+            <option value="Insurance">🛡️ Insurance</option>
+            <option value="Subscriptions">📱 Subscriptions</option>
+            <option value="Debt">💳 Debt Payments</option>
+            <option value="Other">📦 Other</option>
+          </select>
+          <div class="input-prefix-wrap">
+            <span>$</span>
+            <input type="number" id="billAmount" class="input-field bare" placeholder="Amount" min="0" />
+          </div>
+          <button class="btn-secondary" onclick="addBill()">+ Add</button>
+        </div>
+        <div id="billsList" class="items-list"></div>
+        <div class="setup-nav">
+          <button class="btn-ghost" onclick="prevStep(2)">← Back</button>
+          <button class="btn-primary btn-lg" onclick="nextStep(2)">Continue →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3 — Spending Habits -->
+    <div class="setup-step" id="step-3">
+      <div class="setup-card setup-card-wide">
+        <div class="setup-icon">🛍️</div>
+        <h2>What are your spending habits?</h2>
+        <p class="setup-sub">Select categories and set your monthly estimates</p>
+        <div class="habits-grid" id="habitsGrid"></div>
+        <div class="custom-habit-form">
+          <input type="text"   id="habitCategory" class="input-field" placeholder="Custom category" />
+          <div class="input-prefix-wrap">
+            <span>$</span>
+            <input type="number" id="habitAmount" class="input-field bare" placeholder="Monthly amount" min="0" />
+          </div>
+          <button class="btn-secondary" onclick="addCustomHabit()">+ Add</button>
+        </div>
+        <div id="habitsList" class="items-list"></div>
+        <div class="setup-nav">
+          <button class="btn-ghost" onclick="prevStep(3)">← Back</button>
+          <button class="btn-primary btn-lg" id="generateBtn" onclick="generatePlan()">✨ Generate My Plan</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══ LOADING ═══ -->
+<div class="view" id="view-loading">
+  <div class="loading-screen">
+    <div class="coin-spin">💰</div>
+    <h2>Analyzing your finances…</h2>
+    <p>CashCoachAI is crafting your personalized budget plan</p>
+    <div class="loading-dots"><span></span><span></span><span></span></div>
+  </div>
+</div>
+
+<!-- ═══ DASHBOARD ═══ -->
+<div class="view" id="view-dashboard">
+  <div class="main-container">
+
+    <!-- Score Hero -->
+    <div class="score-hero">
+      <div class="score-circle" id="scoreCircle">
+        <div class="score-number" id="scoreNumber">--</div>
+        <div class="score-label-sm" id="scoreLabel">Loading</div>
+      </div>
+      <div class="score-content">
+        <h1 id="dashTitle">Your Financial Plan</h1>
+        <p class="plan-summary" id="planSummary">Generating your personalized plan…</p>
+        <div id="redFlags"></div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-icon si-green">💵</div>
+        <div><div class="stat-label">Monthly Income</div><div class="stat-value" id="statIncome">—</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon si-red">🧾</div>
+        <div><div class="stat-label">Fixed Bills</div><div class="stat-value" id="statBills">—</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon si-yellow">🛍️</div>
+        <div><div class="stat-label">Variable Spending</div><div class="stat-value" id="statVariable">—</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon si-blue">🏦</div>
+        <div><div class="stat-label">Recommended Savings</div><div class="stat-value" id="statSavings">—</div></div>
+      </div>
+    </div>
+
+    <!-- Chart + Savings -->
+    <div class="two-col">
+      <div class="card">
+        <div class="card-header"><h3>Budget Breakdown</h3></div>
+        <div class="chart-wrap"><canvas id="budgetChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>💰 Savings Plan</h3></div>
+        <div id="savingsPlan" class="savings-body"></div>
+      </div>
+    </div>
+
+    <!-- Allocations Table -->
+    <div class="card">
+      <div class="card-header">
+        <h3>Budget Allocations</h3>
+        <span class="card-sub">Recommended vs. Current Spending</span>
+      </div>
+      <div class="table-scroll">
+        <table class="budget-table">
+          <thead>
+            <tr>
+              <th>Category</th><th>Recommended</th><th>Current</th>
+              <th>% of Income</th><th>Status</th><th>Tip</th>
+            </tr>
+          </thead>
+          <tbody id="budgetTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Tips -->
+    <div class="card">
+      <div class="card-header"><h3>🎯 Personalized Tips</h3></div>
+      <div class="tips-grid" id="tipsGrid"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══ TRACKER ═══ -->
+<div class="view" id="view-tracker">
+  <div class="main-container">
+    <div class="page-header">
+      <h2>Expense Tracker</h2>
+      <p>Log daily spending and see how you track against your budget</p>
+    </div>
+
+    <!-- Add expense -->
+    <div class="card">
+      <div class="card-header"><h3>Add Expense</h3></div>
+      <div class="expense-form">
+        <input type="date"   id="expenseDate"   class="input-field" />
+        <input type="text"   id="expenseDesc"   class="input-field" placeholder="Description (e.g. Starbucks)" />
+        <select              id="expenseCat"    class="input-field"><option value="">Category…</option></select>
+        <div class="input-prefix-wrap">
+          <span>$</span>
+          <input type="number" id="expenseAmount" class="input-field bare" placeholder="Amount" min="0" step="0.01" />
+        </div>
+        <button class="btn-primary" onclick="addExpense()">+ Add</button>
+      </div>
+    </div>
+
+    <!-- Monthly progress -->
+    <div class="card">
+      <div class="card-header">
+        <h3>This Month's Progress</h3>
+        <span class="card-sub" id="monthLabel"></span>
+      </div>
+      <div id="progressBars" class="progress-container"></div>
+    </div>
+
+    <!-- Spending chart -->
+    <div class="card">
+      <div class="card-header"><h3>Spending by Category</h3></div>
+      <div class="chart-wrap chart-sm"><canvas id="spendingChart"></canvas></div>
+    </div>
+
+    <!-- Transactions -->
+    <div class="card">
+      <div class="card-header">
+        <h3>Recent Transactions</h3>
+        <button class="btn-ghost-sm" onclick="clearExpenses()">Clear All</button>
+      </div>
+      <div id="transactionsList" class="txn-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ADVISOR ═══ -->
+<div class="view" id="view-advisor">
+  <div class="advisor-wrap">
+    <div class="advisor-header">
+      <h2>💬 AI Financial Advisor</h2>
+      <p>Ask anything — I already know your full financial picture.</p>
+    </div>
+
+    <div class="suggested-prompts">
+      <button class="prompt-chip" onclick="sendSuggested(this)">How can I save more money?</button>
+      <button class="prompt-chip" onclick="sendSuggested(this)">Am I spending too much on dining?</button>
+      <button class="prompt-chip" onclick="sendSuggested(this)">Create a debt payoff plan</button>
+      <button class="prompt-chip" onclick="sendSuggested(this)">What's the 50/30/20 rule for my income?</button>
+      <button class="prompt-chip" onclick="sendSuggested(this)">How long to build a 6-month emergency fund?</button>
+    </div>
+
+    <div class="chat-messages" id="chatMessages">
+      <div class="chat-msg ai">
+        <div class="msg-avatar">🤖</div>
+        <div class="msg-bubble">
+          <p>Hi! I'm CashCoachAI, your personal finance advisor. I've reviewed your complete financial profile and I'm ready to help you reach your money goals. What would you like to know?</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-input-row">
+      <textarea id="chatInput" class="chat-textarea" rows="1"
+        placeholder="Ask about budgeting, saving, debt, investments…"
+        onkeydown="handleChatKey(event)"></textarea>
+      <button class="btn-send" id="sendBtn" onclick="sendMessage()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
