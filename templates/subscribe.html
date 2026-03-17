@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CashCoachAI — Start Your Free Trial</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body class="sub-body">
+
+<div class="sub-page">
+
+  <!-- Brand -->
+  <div class="sub-brand">
+    <span class="sub-logo">💰</span>
+    <span class="sub-title">CashCoach<span class="accent">AI</span></span>
+  </div>
+
+  <!-- Card -->
+  <div class="sub-card">
+    <div class="trial-badge">🎉 7-Day Free Trial — No charge until day 8</div>
+
+    <h1 class="sub-headline">Take Control of Your Finances</h1>
+    <p class="sub-tagline">
+      AI-powered budgeting and personal coaching — personalized to your income,
+      bills, and spending habits.
+    </p>
+
+    <div class="sub-price-box">
+      <div class="sub-price-amount">$9.99</div>
+      <div class="sub-price-meta">per month after free trial · Cancel anytime</div>
+    </div>
+
+    <ul class="sub-features">
+      <li><span class="feat-check">✓</span> Personalized AI budget plan</li>
+      <li><span class="feat-check">✓</span> Financial health score (1–100)</li>
+      <li><span class="feat-check">✓</span> Monthly expense tracker</li>
+      <li><span class="feat-check">✓</span> AI financial advisor chat</li>
+      <li><span class="feat-check">✓</span> Savings projections &amp; tips</li>
+    </ul>
+
+    <button class="sub-btn" id="subscribeBtn" onclick="startTrial()">
+      Start Free Trial →
+    </button>
+    <p class="sub-note">No charges for 7 days · $9.99/month after · Cancel anytime</p>
+
+    <div class="sub-error" id="subError"></div>
+  </div>
+
+  <p class="sub-footer-note">
+    Already subscribed? <a href="/" class="sub-link">Return to app</a>
+  </p>
+
+</div>
+
+<script>
+async function startTrial() {
+  const btn = document.getElementById('subscribeBtn');
+  const err = document.getElementById('subError');
+  btn.disabled = true;
+  btn.textContent = 'Redirecting to Stripe…';
+  err.textContent = '';
+
+  try {
+    const res  = await fetch('/api/create-checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    window.location.href = data.url;
+  } catch (e) {
+    err.textContent = e.message || 'Something went wrong. Please try again.';
+    btn.disabled    = false;
+    btn.textContent = 'Start Free Trial →';
+  }
+}
+
+// Show error if redirected back from Stripe with ?error=1
+if (new URLSearchParams(window.location.search).get('error')) {
+  document.getElementById('subError').textContent =
+    'Something went wrong with checkout. Please try again.';
+}
+</script>
+</body>
+</html>

@@ -38,7 +38,19 @@ let budgetChart   = null;
 let spendingChart = null;
 
 // ─── Init ──────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  // Handle subscription token from Stripe redirect (?token=...)
+  const params   = new URLSearchParams(window.location.search);
+  const urlToken = params.get('token');
+  if (urlToken) {
+    localStorage.setItem('cca_sub_token', urlToken);
+    window.history.replaceState({}, document.title, '/');
+  }
+
+  // Verify subscription before showing the app
+  const allowed = await checkSubscription();
+  if (!allowed) return;   // redirected to /subscribe
+
   loadState();
 
   // Set default date
@@ -55,6 +67,26 @@ document.addEventListener('DOMContentLoaded', () => {
     goToStep(1);
   }
 });
+
+// ─── Subscription Check ────────────────
+async function checkSubscription() {
+  try {
+    const token = localStorage.getItem('cca_sub_token') || '';
+    const res   = await fetch(`/api/check-subscription?token=${encodeURIComponent(token)}`);
+    const data  = await res.json();
+
+    if (data.dev_mode) return true;   // Stripe not configured — dev mode
+
+    if (!data.active) {
+      window.location.href = '/subscribe';
+      return false;
+    }
+    return true;
+  } catch (_) {
+    // Network error — allow through rather than block the user
+    return true;
+  }
+}
 
 // ─── Persistence ──────────────────────
 function saveState() {
@@ -95,7 +127,8 @@ function showView(name) {
   document.getElementById('view-' + name).classList.add('active');
 }
 function navigate(name) {
-  if (!state.budgetPlan && name !== 'setup') { showToast('Please complete setup first', 'error'); return; }
+  const noAuthRequired = ['setup', 'contact'];
+  if (!state.budgetPlan && !noAuthRequired.includes(name)) { showToast('Please complete setup first', 'error'); return; }
   showView(name);
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.view === name));
   if (name === 'tracker') renderTracker();
@@ -528,6 +561,48 @@ function addTyping() {
 function scrollChat() {
   const c = document.getElementById('chatMessages');
   c.scrollTop = c.scrollHeight;
+}
+
+// ─── Contact ───────────────────────────
+async function submitContact() {
+  const name    = document.getElementById('contactName').value.trim();
+  const email   = document.getElementById('contactEmail').value.trim();
+  const message = document.getElementById('contactMessage').value.trim();
+  const btn     = document.getElementById('contactSubmitBtn');
+  const status  = document.getElementById('contactStatus');
+
+  if (!name || !email || !message) {
+    showToast('Please fill in all fields', 'error');
+    return;
+  }
+
+  btn.disabled    = true;
+  btn.textContent = 'Sending…';
+  status.textContent = '';
+  status.className   = 'contact-status';
+
+  try {
+    const res  = await fetch('/api/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, message }),
+    });
+    const data = await res.json();
+
+    if (data.error) throw new Error(data.error);
+
+    status.textContent = '✓ Message sent! We\'ll get back to you soon.';
+    status.classList.add('contact-success');
+    document.getElementById('contactName').value    = '';
+    document.getElementById('contactEmail').value   = '';
+    document.getElementById('contactMessage').value = '';
+  } catch (err) {
+    status.textContent = err.message || 'Failed to send. Please try again.';
+    status.classList.add('contact-error');
+  }
+
+  btn.disabled    = false;
+  btn.textContent = 'Send Message';
 }
 
 // ─── Utilities ─────────────────────────
