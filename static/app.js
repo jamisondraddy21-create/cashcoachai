@@ -70,6 +70,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // ─── Subscription Check ────────────────
 async function checkSubscription() {
+  // Demo mode: bypass subscription check, load sample data
+  if (localStorage.getItem('cca_demo') === '1') {
+    loadDemoState();
+    return true;
+  }
+
   try {
     const token = localStorage.getItem('cca_sub_token') || '';
     const res   = await fetch(`/api/check-subscription?token=${encodeURIComponent(token)}`);
@@ -88,6 +94,78 @@ async function checkSubscription() {
   }
 }
 
+// ─── Demo Mode ─────────────────────────
+function loadDemoState() {
+  document.getElementById('demoBanner').style.display = 'flex';
+
+  state = {
+    income: 5200,
+    bills: [
+      { name: 'Rent',          category: 'Housing',        amount: 1400 },
+      { name: 'Car Payment',   category: 'Transportation', amount: 350  },
+      { name: 'Internet',      category: 'Utilities',      amount: 60   },
+      { name: 'Phone Plan',    category: 'Subscriptions',  amount: 80   },
+      { name: 'Car Insurance', category: 'Insurance',      amount: 120  },
+    ],
+    habits: [
+      { category: 'Groceries',     estimated: 380, emoji: '🛒' },
+      { category: 'Dining Out',    estimated: 280, emoji: '🍕' },
+      { category: 'Coffee',        estimated: 55,  emoji: '☕' },
+      { category: 'Entertainment', estimated: 90,  emoji: '🎬' },
+      { category: 'Gas / Fuel',    estimated: 160, emoji: '⛽' },
+      { category: 'Shopping',      estimated: 120, emoji: '🛍️' },
+    ],
+    expenses: [
+      { id: 1,  date: '2026-03-01', description: 'Whole Foods',      category: 'Groceries',     amount: 87.43 },
+      { id: 2,  date: '2026-03-03', description: 'Chipotle',         category: 'Dining Out',    amount: 14.50 },
+      { id: 3,  date: '2026-03-05', description: 'Starbucks',        category: 'Coffee',        amount: 6.75  },
+      { id: 4,  date: '2026-03-07', description: 'Shell Gas',        category: 'Gas / Fuel',    amount: 48.20 },
+      { id: 5,  date: '2026-03-10', description: "Trader Joe's",     category: 'Groceries',     amount: 64.30 },
+      { id: 6,  date: '2026-03-12', description: 'Amazon',           category: 'Shopping',      amount: 34.99 },
+      { id: 7,  date: '2026-03-14', description: 'Olive Garden',     category: 'Dining Out',    amount: 42.80 },
+      { id: 8,  date: '2026-03-16', description: 'Movie Tickets',    category: 'Entertainment', amount: 28.00 },
+    ],
+    chatHistory: [],
+    budgetPlan: {
+      summary: 'You have a solid foundation with your $5,200 monthly income, but dining out and shopping are running over budget. Trimming those two categories alone could free up $80–100/month for savings.',
+      financial_score: 68,
+      score_label: 'Good',
+      score_explanation: 'Your income covers all expenses with a small surplus, but savings rate could be stronger.',
+      allocations: [
+        { category: 'Housing',        recommended_budget: 1400, current_spending: 1400, percentage_of_income: 26.9, status: 'on_track',   tip: 'Housing is within the recommended 30% threshold — great job keeping rent manageable.' },
+        { category: 'Transportation', recommended_budget: 350,  current_spending: 350,  percentage_of_income: 6.7,  status: 'on_track',   tip: 'Consider carpooling once a week to shave $20–30 off monthly gas spend.' },
+        { category: 'Utilities',      recommended_budget: 60,   current_spending: 60,   percentage_of_income: 1.2,  status: 'on_track',   tip: 'Utilities are well-controlled — look for bundle deals to save further.' },
+        { category: 'Subscriptions',  recommended_budget: 80,   current_spending: 80,   percentage_of_income: 1.5,  status: 'on_track',   tip: 'Audit subscriptions quarterly — the average household pays for 3 they rarely use.' },
+        { category: 'Insurance',      recommended_budget: 120,  current_spending: 120,  percentage_of_income: 2.3,  status: 'on_track',   tip: 'Shop competing car insurance quotes annually — you could save $20–40/month.' },
+        { category: 'Groceries',      recommended_budget: 350,  current_spending: 380,  percentage_of_income: 7.3,  status: 'warning',    tip: 'Meal planning and a grocery list could cut this by $30–50 per month.' },
+        { category: 'Dining Out',     recommended_budget: 200,  current_spending: 280,  percentage_of_income: 5.4,  status: 'over_budget',tip: 'Cook two extra meals at home per week — this gets you to $200 and saves $960/year.' },
+        { category: 'Coffee',         recommended_budget: 40,   current_spending: 55,   percentage_of_income: 1.1,  status: 'warning',    tip: 'Brewing at home 3 days a week saves ~$180 annually.' },
+        { category: 'Entertainment',  recommended_budget: 90,   current_spending: 90,   percentage_of_income: 1.7,  status: 'on_track',   tip: 'Look for free local events to stretch your entertainment dollar.' },
+        { category: 'Gas / Fuel',     recommended_budget: 160,  current_spending: 160,  percentage_of_income: 3.1,  status: 'on_track',   tip: 'Use GasBuddy to find the cheapest gas nearby and save $10–15/month.' },
+        { category: 'Shopping',       recommended_budget: 100,  current_spending: 120,  percentage_of_income: 2.3,  status: 'warning',    tip: 'Apply a 24-hour rule before purchases — reduces impulse buys by ~30%.' },
+        { category: 'Savings',        recommended_budget: 500,  current_spending: 0,    percentage_of_income: 9.6,  status: 'warning',    tip: 'Automate $500 to savings the day your paycheck arrives — out of sight, out of mind.' },
+      ],
+      savings_plan: {
+        monthly_amount: 500,
+        percentage_of_income: 9.6,
+        annual_projection: 6000,
+        '3_year_projection': 18000,
+        recommendation: 'Set up an automatic transfer of $500 to a high-yield savings account on payday.',
+      },
+      top_tips: [
+        'Cutting dining out from $280 to $200/month saves $960/year — enough for a vacation.',
+        'Shopping car insurance annually could save $240–480/year on your $120/month plan.',
+        'Automating $500/month to savings grows to $18,000 in 3 years — a full emergency fund.',
+      ],
+      red_flags: [],
+    },
+  };
+}
+
+function closeDemoBanner() {
+  document.getElementById('demoBanner').style.display = 'none';
+}
+
 // ─── Persistence ──────────────────────
 function saveState() {
   try { localStorage.setItem('cca_v1', JSON.stringify(state)); } catch (_) {}
@@ -102,6 +180,8 @@ function loadState() {
 function resetApp() {
   if (!confirm('Reset all data and start over?')) return;
   localStorage.removeItem('cca_v1');
+  localStorage.removeItem('cca_demo');
+  document.getElementById('demoBanner').style.display = 'none';
   state = { income:0, bills:[], habits:[], expenses:[], budgetPlan:null, chatHistory:[] };
   if (budgetChart)   { budgetChart.destroy();   budgetChart   = null; }
   if (spendingChart) { spendingChart.destroy();  spendingChart = null; }

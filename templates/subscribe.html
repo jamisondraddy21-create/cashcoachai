@@ -46,6 +46,13 @@
     </button>
     <p class="sub-note">No charges for 7 days · $9.99/month after · Cancel anytime</p>
 
+    <div class="sub-divider">or</div>
+
+    <button class="sub-btn-demo" onclick="startDemo()">
+      👀 See a demo first
+    </button>
+    <p class="sub-note">Explore with sample data — no account needed</p>
+
     <div class="sub-error" id="subError"></div>
   </div>
 
@@ -76,6 +83,11 @@ async function startTrial() {
     btn.disabled    = false;
     btn.textContent = 'Start Free Trial →';
   }
+}
+
+function startDemo() {
+  localStorage.setItem('cca_demo', '1');
+  window.location.href = '/';
 }
 
 // Show error if redirected back from Stripe with ?error=1

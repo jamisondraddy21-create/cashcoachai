@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CashCoachAI — Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body class="sub-body">
+
+<div class="sub-page">
+  <div class="sub-brand">
+    <span class="sub-logo">💰</span>
+    <span class="sub-title">CashCoach<span class="accent">AI</span></span>
+  </div>
+
+  <div class="sub-card" style="max-width:360px">
+    <div style="font-size:36px;margin-bottom:12px">🔐</div>
+    <h2 style="font-size:20px;font-weight:700;margin-bottom:6px">Admin Access</h2>
+    <p style="font-size:14px;color:var(--text-2);margin-bottom:24px">Enter the admin password to bypass the subscription page.</p>
+
+    <form method="POST" action="/admin">
+      <div class="contact-field" style="text-align:left;margin-bottom:16px">
+        <label class="contact-label">Password</label>
+        <input type="password" name="password" class="input-field"
+               placeholder="Enter admin password" autofocus required />
+      </div>
+
+      {% if error %}
+      <div style="background:var(--red-light);color:var(--red);border-radius:var(--r-sm);padding:10px 14px;font-size:13px;margin-bottom:16px">
+        {{ error }}
+      </div>
+      {% endif %}
+
+      <button type="submit" class="sub-btn">Enter →</button>
+    </form>
+  </div>
+
+  <p class="sub-footer-note">
+    <a href="/subscribe" class="sub-link">← Back to subscribe page</a>
+  </p>
+</div>
+
+</body>
+</html>

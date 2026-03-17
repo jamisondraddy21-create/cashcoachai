@@ -31,6 +31,8 @@ CONTACT_EMAIL_TO        = os.environ.get('CONTACT_EMAIL_TO', '')   # where you r
 SMTP_EMAIL              = os.environ.get('SMTP_EMAIL', '')          # Gmail address to send from
 SMTP_PASSWORD           = os.environ.get('SMTP_PASSWORD', '')       # Gmail app password
 
+ADMIN_PASSWORD          = os.environ.get('ADMIN_PASSWORD', 'cashcoach_admin_2024')  # change this!
+
 
 # ─── Database ──────────────────────────────────
 DB_PATH = '/tmp/cashcoach.db'
@@ -101,6 +103,41 @@ def get_or_create_price_id():
 
 
 init_db()
+
+
+# ─── Admin Bypass ──────────────────────────────
+
+@app.route('/admin', methods=['GET', 'POST'])
+def admin():
+    error = None
+
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        if password == ADMIN_PASSWORD:
+            # Get or create a permanent admin bypass token
+            conn = get_db()
+            row = conn.execute(
+                "SELECT token FROM subscriptions WHERE email='admin@cashcoachai.internal'"
+            ).fetchone()
+
+            if row:
+                token = row['token']
+            else:
+                token = str(uuid.uuid4())
+                conn.execute(
+                    '''INSERT INTO subscriptions
+                       (token, email, status)
+                       VALUES (?, 'admin@cashcoachai.internal', 'active')''',
+                    (token,)
+                )
+                conn.commit()
+            conn.close()
+
+            return redirect(f'/?token={token}')
+        else:
+            error = 'Incorrect password.'
+
+    return render_template('admin.html', error=error)
 
 
 # ─── Subscription Routes ───────────────────────
