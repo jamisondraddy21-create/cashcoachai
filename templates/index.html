@@ -28,9 +28,16 @@
 
 <!-- ═══ DEMO BANNER ═══ -->
 <div class="demo-banner" id="demoBanner" style="display:none">
-  <span>👀 You're viewing a <strong>demo</strong> with sample data.</span>
-  <a href="/subscribe" class="demo-banner-cta">Subscribe to use your real finances →</a>
-  <button class="demo-banner-close" onclick="closeDemoBanner()">✕</button>
+  <div class="demo-banner-row">
+    <span class="demo-banner-label">👀 <strong>Demo</strong></span>
+    <div class="demo-tabs" id="demoTabs">
+      <button class="demo-tab" data-profile="struggling"  onclick="loadDemoProfile('struggling')">😰 Struggling</button>
+      <button class="demo-tab" data-profile="getting-by"  onclick="loadDemoProfile('getting-by')">😐 Getting By</button>
+      <button class="demo-tab" data-profile="thriving"    onclick="loadDemoProfile('thriving')">🚀 Thriving</button>
+    </div>
+    <a href="/subscribe" class="demo-banner-cta">Subscribe →</a>
+    <button class="demo-banner-close" onclick="closeDemoBanner()">✕</button>
+  </div>
 </div>
 
 <!-- ═══ SETUP WIZARD ═══ -->

@@ -72,7 +72,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function checkSubscription() {
   // Demo mode: bypass subscription check, load sample data
   if (localStorage.getItem('cca_demo') === '1') {
-    loadDemoState();
+    document.getElementById('demoBanner').style.display = 'flex';
+    loadDemoProfile('getting-by');
     return true;
   }
 
@@ -81,7 +82,7 @@ async function checkSubscription() {
     const res   = await fetch(`/api/check-subscription?token=${encodeURIComponent(token)}`);
     const data  = await res.json();
 
-    if (data.dev_mode) return true;   // Stripe not configured — dev mode
+    if (data.dev_mode) return true;
 
     if (!data.active) {
       window.location.href = '/subscribe';
@@ -89,77 +90,249 @@ async function checkSubscription() {
     }
     return true;
   } catch (_) {
-    // Network error — allow through rather than block the user
     return true;
   }
 }
 
-// ─── Demo Mode ─────────────────────────
-function loadDemoState() {
-  document.getElementById('demoBanner').style.display = 'flex';
+// ─── Demo Profiles ─────────────────────
+const DEMO_PROFILES = {
 
-  state = {
-    income: 5200,
+  // ── Struggling ─ Score 18 ──────────────
+  struggling: {
+    income: 2800,
     bills: [
-      { name: 'Rent',          category: 'Housing',        amount: 1400 },
-      { name: 'Car Payment',   category: 'Transportation', amount: 350  },
-      { name: 'Internet',      category: 'Utilities',      amount: 60   },
-      { name: 'Phone Plan',    category: 'Subscriptions',  amount: 80   },
-      { name: 'Car Insurance', category: 'Insurance',      amount: 120  },
+      { name: 'Rent',                  category: 'Housing',        amount: 950  },
+      { name: 'Car Loan',              category: 'Transportation', amount: 380  },
+      { name: 'Electric & Gas',        category: 'Utilities',      amount: 110  },
+      { name: 'Phone',                 category: 'Subscriptions',  amount: 85   },
+      { name: 'Credit Card Minimum',   category: 'Debt',           amount: 120  },
     ],
     habits: [
-      { category: 'Groceries',     estimated: 380, emoji: '🛒' },
-      { category: 'Dining Out',    estimated: 280, emoji: '🍕' },
-      { category: 'Coffee',        estimated: 55,  emoji: '☕' },
-      { category: 'Entertainment', estimated: 90,  emoji: '🎬' },
-      { category: 'Gas / Fuel',    estimated: 160, emoji: '⛽' },
-      { category: 'Shopping',      estimated: 120, emoji: '🛍️' },
+      { category: 'Groceries',     estimated: 180,  emoji: '🛒' },
+      { category: 'Dining Out',    estimated: 520,  emoji: '🍕' },
+      { category: 'Coffee',        estimated: 140,  emoji: '☕' },
+      { category: 'Entertainment', estimated: 250,  emoji: '🎬' },
+      { category: 'Shopping',      estimated: 280,  emoji: '🛍️' },
+      { category: 'Gas / Fuel',    estimated: 120,  emoji: '⛽' },
     ],
     expenses: [
-      { id: 1,  date: '2026-03-01', description: 'Whole Foods',      category: 'Groceries',     amount: 87.43 },
-      { id: 2,  date: '2026-03-03', description: 'Chipotle',         category: 'Dining Out',    amount: 14.50 },
-      { id: 3,  date: '2026-03-05', description: 'Starbucks',        category: 'Coffee',        amount: 6.75  },
-      { id: 4,  date: '2026-03-07', description: 'Shell Gas',        category: 'Gas / Fuel',    amount: 48.20 },
-      { id: 5,  date: '2026-03-10', description: "Trader Joe's",     category: 'Groceries',     amount: 64.30 },
-      { id: 6,  date: '2026-03-12', description: 'Amazon',           category: 'Shopping',      amount: 34.99 },
-      { id: 7,  date: '2026-03-14', description: 'Olive Garden',     category: 'Dining Out',    amount: 42.80 },
-      { id: 8,  date: '2026-03-16', description: 'Movie Tickets',    category: 'Entertainment', amount: 28.00 },
+      { id: 1,  date: '2026-03-01', description: 'DoorDash — Burger King',   category: 'Dining Out',    amount: 18.99 },
+      { id: 2,  date: '2026-03-02', description: 'Starbucks',                category: 'Coffee',        amount: 8.50  },
+      { id: 3,  date: '2026-03-03', description: 'DoorDash — Pizza Hut',     category: 'Dining Out',    amount: 32.40 },
+      { id: 4,  date: '2026-03-04', description: 'Starbucks',                category: 'Coffee',        amount: 7.25  },
+      { id: 5,  date: '2026-03-05', description: 'Amazon impulse buy',       category: 'Shopping',      amount: 54.99 },
+      { id: 6,  date: '2026-03-06', description: 'Uber Eats — Chinese',      category: 'Dining Out',    amount: 28.75 },
+      { id: 7,  date: '2026-03-07', description: 'Shell Gas Station',        category: 'Gas / Fuel',    amount: 55.00 },
+      { id: 8,  date: '2026-03-08', description: 'Bar tab',                  category: 'Entertainment', amount: 67.00 },
+      { id: 9,  date: '2026-03-09', description: 'Starbucks',                category: 'Coffee',        amount: 9.10  },
+      { id: 10, date: '2026-03-10', description: 'Walmart groceries',        category: 'Groceries',     amount: 62.40 },
+      { id: 11, date: '2026-03-11', description: 'DoorDash — McDonald\'s',   category: 'Dining Out',    amount: 14.30 },
+      { id: 12, date: '2026-03-12', description: 'TikTok Shop haul',         category: 'Shopping',      amount: 89.00 },
+      { id: 13, date: '2026-03-13', description: 'Starbucks',                category: 'Coffee',        amount: 8.75  },
+      { id: 14, date: '2026-03-14', description: 'Concert tickets',          category: 'Entertainment', amount: 95.00 },
+      { id: 15, date: '2026-03-15', description: 'Uber Eats — Sushi',        category: 'Dining Out',    amount: 44.50 },
+      { id: 16, date: '2026-03-16', description: 'Target run',               category: 'Shopping',      amount: 73.20 },
     ],
     chatHistory: [],
     budgetPlan: {
-      summary: 'You have a solid foundation with your $5,200 monthly income, but dining out and shopping are running over budget. Trimming those two categories alone could free up $80–100/month for savings.',
-      financial_score: 68,
-      score_label: 'Good',
-      score_explanation: 'Your income covers all expenses with a small surplus, but savings rate could be stronger.',
+      summary: 'Your spending is currently $335 over your monthly income — you are accumulating debt every month with no path to savings. Dining out alone consumes 18.6% of your income, and entertainment and shopping are dangerously high. Immediate cuts are needed to stop the financial bleeding before debt becomes unmanageable.',
+      financial_score: 18,
+      score_label: 'Needs Work',
+      score_explanation: 'Monthly spending exceeds income by $335, meaning new debt is accumulating every single month.',
       allocations: [
-        { category: 'Housing',        recommended_budget: 1400, current_spending: 1400, percentage_of_income: 26.9, status: 'on_track',   tip: 'Housing is within the recommended 30% threshold — great job keeping rent manageable.' },
-        { category: 'Transportation', recommended_budget: 350,  current_spending: 350,  percentage_of_income: 6.7,  status: 'on_track',   tip: 'Consider carpooling once a week to shave $20–30 off monthly gas spend.' },
-        { category: 'Utilities',      recommended_budget: 60,   current_spending: 60,   percentage_of_income: 1.2,  status: 'on_track',   tip: 'Utilities are well-controlled — look for bundle deals to save further.' },
-        { category: 'Subscriptions',  recommended_budget: 80,   current_spending: 80,   percentage_of_income: 1.5,  status: 'on_track',   tip: 'Audit subscriptions quarterly — the average household pays for 3 they rarely use.' },
-        { category: 'Insurance',      recommended_budget: 120,  current_spending: 120,  percentage_of_income: 2.3,  status: 'on_track',   tip: 'Shop competing car insurance quotes annually — you could save $20–40/month.' },
-        { category: 'Groceries',      recommended_budget: 350,  current_spending: 380,  percentage_of_income: 7.3,  status: 'warning',    tip: 'Meal planning and a grocery list could cut this by $30–50 per month.' },
-        { category: 'Dining Out',     recommended_budget: 200,  current_spending: 280,  percentage_of_income: 5.4,  status: 'over_budget',tip: 'Cook two extra meals at home per week — this gets you to $200 and saves $960/year.' },
-        { category: 'Coffee',         recommended_budget: 40,   current_spending: 55,   percentage_of_income: 1.1,  status: 'warning',    tip: 'Brewing at home 3 days a week saves ~$180 annually.' },
-        { category: 'Entertainment',  recommended_budget: 90,   current_spending: 90,   percentage_of_income: 1.7,  status: 'on_track',   tip: 'Look for free local events to stretch your entertainment dollar.' },
-        { category: 'Gas / Fuel',     recommended_budget: 160,  current_spending: 160,  percentage_of_income: 3.1,  status: 'on_track',   tip: 'Use GasBuddy to find the cheapest gas nearby and save $10–15/month.' },
-        { category: 'Shopping',       recommended_budget: 100,  current_spending: 120,  percentage_of_income: 2.3,  status: 'warning',    tip: 'Apply a 24-hour rule before purchases — reduces impulse buys by ~30%.' },
-        { category: 'Savings',        recommended_budget: 500,  current_spending: 0,    percentage_of_income: 9.6,  status: 'warning',    tip: 'Automate $500 to savings the day your paycheck arrives — out of sight, out of mind.' },
+        { category: 'Housing',        recommended_budget: 950,  current_spending: 950,  percentage_of_income: 33.9, status: 'warning',    tip: 'Housing is above the 30% threshold at 33.9% of income — explore roommates or a cheaper unit.' },
+        { category: 'Transportation', recommended_budget: 380,  current_spending: 380,  percentage_of_income: 13.6, status: 'over_budget',tip: 'Car loan at 13.6% of income is crushing your budget — consider refinancing for a lower payment.' },
+        { category: 'Utilities',      recommended_budget: 110,  current_spending: 110,  percentage_of_income: 3.9,  status: 'on_track',   tip: 'Turn off lights and unplug devices to trim $15–20/month off your electric bill.' },
+        { category: 'Subscriptions',  recommended_budget: 85,   current_spending: 85,   percentage_of_income: 3.0,  status: 'warning',    tip: 'Review all subscriptions — cancel anything you haven\'t used in 30 days.' },
+        { category: 'Debt',           recommended_budget: 120,  current_spending: 120,  percentage_of_income: 4.3,  status: 'warning',    tip: 'Only paying the minimum means this debt could take 10+ years to pay off — call your issuer about hardship programs.' },
+        { category: 'Groceries',      recommended_budget: 200,  current_spending: 180,  percentage_of_income: 6.4,  status: 'on_track',   tip: 'Groceries are actually reasonable — shift more of dining spending here by cooking at home.' },
+        { category: 'Dining Out',     recommended_budget: 100,  current_spending: 520,  percentage_of_income: 18.6, status: 'over_budget',tip: 'Cutting DoorDash from $520 to $100/month is the single biggest change you can make — saves $5,040/year.' },
+        { category: 'Coffee',         recommended_budget: 30,   current_spending: 140,  percentage_of_income: 5.0,  status: 'over_budget',tip: 'A $15 bag of coffee beans makes 30 cups at home vs. $8.50 per Starbucks visit — switch today.' },
+        { category: 'Entertainment',  recommended_budget: 60,   current_spending: 250,  percentage_of_income: 8.9,  status: 'over_budget',tip: 'Entertainment at $250 is 4x the recommended amount — free events, parks, and streaming can replace expensive outings.' },
+        { category: 'Shopping',       recommended_budget: 50,   current_spending: 280,  percentage_of_income: 10.0, status: 'over_budget',tip: 'Shopping impulse buys at $280/month are unaffordable at your income level — delete shopping apps from your phone.' },
+        { category: 'Gas / Fuel',     recommended_budget: 120,  current_spending: 120,  percentage_of_income: 4.3,  status: 'on_track',   tip: 'Gas is controlled — use GasBuddy to find the cheapest stations in your area.' },
+        { category: 'Savings',        recommended_budget: 0,    current_spending: 0,    percentage_of_income: 0.0,  status: 'over_budget',tip: 'No savings is possible until spending is brought below income — follow the emergency cuts above first.' },
       ],
       savings_plan: {
-        monthly_amount: 500,
-        percentage_of_income: 9.6,
-        annual_projection: 6000,
-        '3_year_projection': 18000,
-        recommendation: 'Set up an automatic transfer of $500 to a high-yield savings account on payday.',
+        monthly_amount: 0,
+        percentage_of_income: 0,
+        annual_projection: 0,
+        '3_year_projection': 0,
+        recommendation: 'Get spending below income before targeting savings — cutting dining/coffee/shopping by 60% frees up $735/month.',
       },
       top_tips: [
-        'Cutting dining out from $280 to $200/month saves $960/year — enough for a vacation.',
-        'Shopping car insurance annually could save $240–480/year on your $120/month plan.',
-        'Automating $500/month to savings grows to $18,000 in 3 years — a full emergency fund.',
+        'Eliminating DoorDash and cutting dining to $100/month saves $420/month — that alone erases your monthly deficit.',
+        'Your credit card minimum of $120/month is barely covering interest — call your issuer about a 0% balance transfer card.',
+        'Deleting TikTok Shop and Amazon apps reduces impulse purchases by an average of 40% with zero willpower required.',
+      ],
+      red_flags: [
+        'CRITICAL: You are spending $335 more than you earn every month — debt is growing and compounding.',
+        'Dining out at $520/month is 18.6% of income — the maximum healthy threshold is 5–8%.',
+        'Shopping at $280/month on a $2,800 income is 10% — this is a major contributor to your deficit.',
+      ],
+    },
+  },
+
+  // ── Getting By ─ Score 55 ──────────────
+  'getting-by': {
+    income: 5000,
+    bills: [
+      { name: 'Rent',        category: 'Housing',        amount: 1250 },
+      { name: 'Car Payment', category: 'Transportation', amount: 290  },
+      { name: 'Internet',    category: 'Utilities',      amount: 65   },
+      { name: 'Phone',       category: 'Subscriptions',  amount: 65   },
+      { name: 'Streaming',   category: 'Subscriptions',  amount: 30   },
+      { name: 'Gym',         category: 'Health/Gym',     amount: 45   },
+    ],
+    habits: [
+      { category: 'Groceries',      estimated: 360,  emoji: '🛒' },
+      { category: 'Dining Out',     estimated: 210,  emoji: '🍕' },
+      { category: 'Coffee',         estimated: 60,   emoji: '☕' },
+      { category: 'Entertainment',  estimated: 95,   emoji: '🎬' },
+      { category: 'Gas / Fuel',     estimated: 135,  emoji: '⛽' },
+      { category: 'Shopping',       estimated: 105,  emoji: '🛍️' },
+      { category: 'Personal Care',  estimated: 55,   emoji: '💄' },
+    ],
+    expenses: [
+      { id: 1,  date: '2026-03-01', description: 'Kroger',             category: 'Groceries',     amount: 94.20 },
+      { id: 2,  date: '2026-03-03', description: 'Starbucks',          category: 'Coffee',        amount: 6.50  },
+      { id: 3,  date: '2026-03-05', description: 'Chili\'s dinner',    category: 'Dining Out',    amount: 38.40 },
+      { id: 4,  date: '2026-03-06', description: 'Shell Gas',          category: 'Gas / Fuel',    amount: 52.10 },
+      { id: 5,  date: '2026-03-08', description: 'Costco groceries',   category: 'Groceries',     amount: 71.60 },
+      { id: 6,  date: '2026-03-10', description: 'Amazon — shoes',     category: 'Shopping',      amount: 59.99 },
+      { id: 7,  date: '2026-03-12', description: 'Movie & popcorn',    category: 'Entertainment', amount: 32.00 },
+      { id: 8,  date: '2026-03-13', description: 'Starbucks',          category: 'Coffee',        amount: 7.25  },
+      { id: 9,  date: '2026-03-14', description: 'Chipotle lunch',     category: 'Dining Out',    amount: 13.80 },
+      { id: 10, date: '2026-03-15', description: 'CVS — toiletries',   category: 'Personal Care', amount: 28.40 },
+      { id: 11, date: '2026-03-16', description: 'Trader Joe\'s',      category: 'Groceries',     amount: 55.30 },
+    ],
+    chatHistory: [],
+    budgetPlan: {
+      summary: 'You\'re covering your bills and have a small savings buffer, but your savings rate of 5% is well below the recommended 15–20%. Dining and coffee are slightly over target, and there\'s real opportunity to accelerate savings by trimming a few categories without a major lifestyle change.',
+      financial_score: 55,
+      score_label: 'Fair',
+      score_explanation: 'Income covers all expenses with a modest surplus, but savings rate at 5% is too low for long-term financial health.',
+      allocations: [
+        { category: 'Housing',        recommended_budget: 1250, current_spending: 1250, percentage_of_income: 25.0, status: 'on_track',   tip: 'Housing at 25% is within the healthy range — you\'re doing well here.' },
+        { category: 'Transportation', recommended_budget: 290,  current_spending: 290,  percentage_of_income: 5.8,  status: 'on_track',   tip: 'Car payment is manageable — shop insurance annually to save $20–30/month.' },
+        { category: 'Utilities',      recommended_budget: 65,   current_spending: 65,   percentage_of_income: 1.3,  status: 'on_track',   tip: 'Internet is reasonable — check if a lower-tier plan still meets your needs.' },
+        { category: 'Subscriptions',  recommended_budget: 95,   current_spending: 95,   percentage_of_income: 1.9,  status: 'on_track',   tip: 'Do a quarterly subscription audit — the average person pays for 2–3 they barely use.' },
+        { category: 'Health/Gym',     recommended_budget: 45,   current_spending: 45,   percentage_of_income: 0.9,  status: 'on_track',   tip: 'Gym membership is a healthy investment — make sure you\'re using it at least 3x/week.' },
+        { category: 'Groceries',      recommended_budget: 340,  current_spending: 360,  percentage_of_income: 7.2,  status: 'warning',    tip: 'Meal planning before each shopping trip can trim $30–40/month here.' },
+        { category: 'Dining Out',     recommended_budget: 180,  current_spending: 210,  percentage_of_income: 4.2,  status: 'warning',    tip: 'You\'re $30 over on dining — replacing one restaurant meal per week with cooking saves $360/year.' },
+        { category: 'Coffee',         recommended_budget: 40,   current_spending: 60,   percentage_of_income: 1.2,  status: 'warning',    tip: 'Brewing at home 4 days a week cuts this to $25 and saves $420 annually.' },
+        { category: 'Entertainment',  recommended_budget: 95,   current_spending: 95,   percentage_of_income: 1.9,  status: 'on_track',   tip: 'Entertainment is on track — look for matinee deals and free community events.' },
+        { category: 'Gas / Fuel',     recommended_budget: 135,  current_spending: 135,  percentage_of_income: 2.7,  status: 'on_track',   tip: 'Gas is controlled — use GasBuddy to find the cheapest stations near you.' },
+        { category: 'Shopping',       recommended_budget: 90,   current_spending: 105,  percentage_of_income: 2.1,  status: 'warning',    tip: 'Apply a 48-hour rule before non-essential purchases to reduce impulse buys.' },
+        { category: 'Personal Care',  recommended_budget: 55,   current_spending: 55,   percentage_of_income: 1.1,  status: 'on_track',   tip: 'Personal care is on budget — buying store-brand products can save $10–15/month.' },
+        { category: 'Savings',        recommended_budget: 250,  current_spending: 250,  percentage_of_income: 5.0,  status: 'warning',    tip: 'Increase savings to $500 by trimming dining ($30), coffee ($20), and shopping ($15) — just $65 of cuts doubles your savings.' },
+      ],
+      savings_plan: {
+        monthly_amount: 250,
+        percentage_of_income: 5.0,
+        annual_projection: 3000,
+        '3_year_projection': 9000,
+        recommendation: 'Boost savings to $500/month by finding $250 in small cuts — you\'re closer than you think.',
+      },
+      top_tips: [
+        'Three small cuts (dining −$30, coffee −$20, shopping −$15) double your savings from $250 to $515/month.',
+        'Opening a high-yield savings account (4.5% APY) earns $135/year on your current $3,000 savings — switch today.',
+        'In 3 years at $500/month you\'ll have $18,000 — enough for a full emergency fund and a down payment starter.',
       ],
       red_flags: [],
     },
-  };
+  },
+
+  // ── Thriving ─ Score 92 ──────────────
+  thriving: {
+    income: 9500,
+    bills: [
+      { name: 'Mortgage',         category: 'Housing',        amount: 2200 },
+      { name: 'Utilities',        category: 'Utilities',      amount: 130  },
+      { name: 'Phone',            category: 'Subscriptions',  amount: 50   },
+      { name: 'Car Insurance',    category: 'Insurance',      amount: 95   },
+      { name: 'Roth IRA',         category: 'Subscriptions',  amount: 583  },
+    ],
+    habits: [
+      { category: 'Groceries',      estimated: 580,  emoji: '🛒' },
+      { category: 'Dining Out',     estimated: 185,  emoji: '🍕' },
+      { category: 'Coffee',         estimated: 25,   emoji: '☕' },
+      { category: 'Entertainment',  estimated: 90,   emoji: '🎬' },
+      { category: 'Gas / Fuel',     estimated: 80,   emoji: '⛽' },
+      { category: 'Travel',         estimated: 300,  emoji: '✈️' },
+      { category: 'Health/Gym',     estimated: 120,  emoji: '💪' },
+    ],
+    expenses: [
+      { id: 1,  date: '2026-03-01', description: 'Whole Foods — weekly shop',  category: 'Groceries',     amount: 138.60 },
+      { id: 2,  date: '2026-03-03', description: 'Coffee beans (home brew)',   category: 'Coffee',        amount: 18.00  },
+      { id: 3,  date: '2026-03-05', description: 'Personal trainer session',   category: 'Health/Gym',    amount: 60.00  },
+      { id: 4,  date: '2026-03-06', description: 'Costco bulk groceries',      category: 'Groceries',     amount: 142.30 },
+      { id: 5,  date: '2026-03-08', description: 'Anniversary dinner',         category: 'Dining Out',    amount: 92.00  },
+      { id: 6,  date: '2026-03-09', description: 'Gas — hybrid top-up',        category: 'Gas / Fuel',    amount: 28.40  },
+      { id: 7,  date: '2026-03-10', description: 'Flight — summer trip',       category: 'Travel',        amount: 186.00 },
+      { id: 8,  date: '2026-03-12', description: 'Whole Foods — weekly shop',  category: 'Groceries',     amount: 127.90 },
+      { id: 9,  date: '2026-03-14', description: 'Art museum + dinner',        category: 'Entertainment', amount: 45.00  },
+      { id: 10, date: '2026-03-15', description: 'Personal trainer session',   category: 'Health/Gym',    amount: 60.00  },
+      { id: 11, date: '2026-03-16', description: 'Farmers market',             category: 'Groceries',     amount: 54.20  },
+    ],
+    chatHistory: [],
+    budgetPlan: {
+      summary: 'You\'re in exceptional financial shape — maxing your Roth IRA, building home equity, and still saving $2,200/month on top of investments. Your spending is disciplined, your housing is under 25% of income, and you have zero high-interest debt. Focus now on optimizing your investment allocation and building your taxable brokerage account.',
+      financial_score: 92,
+      score_label: 'Excellent',
+      score_explanation: 'You\'re saving 23% of income, investing consistently, and all spending categories are at or below healthy thresholds.',
+      allocations: [
+        { category: 'Housing',        recommended_budget: 2200, current_spending: 2200, percentage_of_income: 23.2, status: 'on_track',   tip: 'Mortgage at 23% is excellent — you\'re building equity while staying well under the 28% guideline.' },
+        { category: 'Utilities',      recommended_budget: 130,  current_spending: 130,  percentage_of_income: 1.4,  status: 'on_track',   tip: 'Consider a smart thermostat — saves $100–150/year automatically with zero lifestyle impact.' },
+        { category: 'Subscriptions',  recommended_budget: 50,   current_spending: 50,   percentage_of_income: 0.5,  status: 'on_track',   tip: 'Phone plan is lean and well-managed — you\'re not wasting money on unused services.' },
+        { category: 'Insurance',      recommended_budget: 95,   current_spending: 95,   percentage_of_income: 1.0,  status: 'on_track',   tip: 'Shop car insurance annually — even with excellent credit you may find $20–30/month in savings.' },
+        { category: 'Roth IRA',       recommended_budget: 583,  current_spending: 583,  percentage_of_income: 6.1,  status: 'on_track',   tip: 'Maxing your Roth IRA ($7,000/year) is outstanding — this grows tax-free for retirement.' },
+        { category: 'Groceries',      recommended_budget: 580,  current_spending: 580,  percentage_of_income: 6.1,  status: 'on_track',   tip: 'Healthy food budget — buying in bulk at Costco and farmers markets is smart and nutritious.' },
+        { category: 'Dining Out',     recommended_budget: 190,  current_spending: 185,  percentage_of_income: 1.9,  status: 'on_track',   tip: 'Dining out is intentional and controlled — you\'re treating it as an experience, not a habit.' },
+        { category: 'Coffee',         recommended_budget: 30,   current_spending: 25,   percentage_of_income: 0.3,  status: 'on_track',   tip: 'Brewing at home is one of the best small habits — you\'re saving $1,500/year vs. daily café visits.' },
+        { category: 'Entertainment',  recommended_budget: 90,   current_spending: 90,   percentage_of_income: 0.9,  status: 'on_track',   tip: 'Entertainment is perfectly balanced — you\'re enjoying life without overspending.' },
+        { category: 'Gas / Fuel',     recommended_budget: 80,   current_spending: 80,   percentage_of_income: 0.8,  status: 'on_track',   tip: 'Your hybrid is saving you $60–80/month vs. a standard vehicle — excellent long-term decision.' },
+        { category: 'Travel',         recommended_budget: 300,  current_spending: 300,  percentage_of_income: 3.2,  status: 'on_track',   tip: 'Using a travel credit card for all purchases earns free flights — could offset this entire category.' },
+        { category: 'Health/Gym',     recommended_budget: 120,  current_spending: 120,  percentage_of_income: 1.3,  status: 'on_track',   tip: 'Investing in your health now pays dividends in lower medical costs and productivity for decades.' },
+        { category: 'Savings',        recommended_budget: 2200, current_spending: 2200, percentage_of_income: 23.2, status: 'on_track',   tip: 'At $2,200/month you\'ll build $26,400/year — consider a taxable brokerage for investments beyond your Roth.' },
+      ],
+      savings_plan: {
+        monthly_amount: 2200,
+        percentage_of_income: 23.2,
+        annual_projection: 26400,
+        '3_year_projection': 79200,
+        recommendation: 'Open a taxable brokerage and invest in low-cost index funds (VTSAX/VTI) to put this savings to maximum work.',
+      },
+      top_tips: [
+        'Opening a taxable brokerage and investing $2,200/month in index funds at 8% average returns reaches $1M in 17 years.',
+        'Your Roth IRA compounding tax-free: at 8% annual growth, your $7,000/year becomes $1.2M by retirement age.',
+        'A travel rewards credit card (e.g. Chase Sapphire) used for all purchases earns $400–600/year in free travel at your spend level.',
+      ],
+      red_flags: [],
+    },
+  },
+};
+
+function loadDemoProfile(name) {
+  const profile = DEMO_PROFILES[name];
+  if (!profile) return;
+
+  // Deep-clone so mutations don't affect the master profile object
+  state = JSON.parse(JSON.stringify(profile));
+
+  // Highlight the active tab
+  document.querySelectorAll('.demo-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.profile === name);
+  });
+
+  // Destroy existing charts so they redraw cleanly
+  if (budgetChart)   { budgetChart.destroy();   budgetChart   = null; }
+  if (spendingChart) { spendingChart.destroy();  spendingChart = null; }
+
+  showNavTabs();
+  navigate('dashboard');
+  renderDashboard();
+  populateCatSelect(state.budgetPlan);
 }
 
 function closeDemoBanner() {
