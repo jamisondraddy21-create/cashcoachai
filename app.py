@@ -13,7 +13,14 @@ from email.mime.multipart import MIMEMultipart
 import stripe
 
 app = Flask(__name__)
-client = anthropic.Anthropic()
+_anthropic_client = None
+
+
+def get_client():
+    global _anthropic_client
+    if _anthropic_client is None:
+        _anthropic_client = anthropic.Anthropic()
+    return _anthropic_client
 
 # ─── Config ────────────────────────────────────
 stripe.api_key          = os.environ.get('STRIPE_SECRET_KEY', '')
@@ -26,8 +33,11 @@ SMTP_PASSWORD           = os.environ.get('SMTP_PASSWORD', '')       # Gmail app 
 
 
 # ─── Database ──────────────────────────────────
+DB_PATH = '/tmp/cashcoach.db'
+
+
 def get_db():
-    conn = sqlite3.connect('cashcoach.db')
+    conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -354,7 +364,7 @@ Rules:
 - Be encouraging but honest"""
 
     try:
-        response = client.messages.create(
+        response = get_client().messages.create(
             model='claude-opus-4-6',
             max_tokens=2048,
             messages=[{'role': 'user', 'content': prompt}],
@@ -406,7 +416,7 @@ Guidelines:
 
     def generate():
         try:
-            with client.messages.stream(
+            with get_client().messages.stream(
                 model='claude-opus-4-6',
                 max_tokens=1024,
                 system=system,
