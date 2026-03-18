@@ -1,6 +1,6 @@
 """CashCoachAI — Flask backend"""
 
-from flask import Flask, render_template, request, jsonify, Response, stream_with_context, redirect, session
+from flask import Flask, render_template, request, jsonify, Response, stream_with_context, redirect, session, make_response
 from werkzeug.security import generate_password_hash, check_password_hash
 import anthropic
 import json
@@ -410,7 +410,9 @@ def subscribe_success():
             return redirect(f'/?token={token}')
         return redirect('/subscribe?error=1')
 
-    return redirect('/')
+    if is_new:
+        return redirect(f'/setup?token={token}')
+    return redirect(f'/?token={token}')
 
 
 @app.route('/api/check-subscription')
@@ -957,6 +959,40 @@ def api_cancel_subscription():
 
 # ─── Main App ──────────────────────────────────
 
+def _restore_session_from_token(token):
+    """Look up token in DB and populate Flask session. Returns the row or None."""
+    if not token:
+        return None
+    conn = get_db()
+    row  = conn.execute(
+        'SELECT id, plan, email, status FROM subscriptions WHERE token=?', (token,)
+    ).fetchone()
+    conn.close()
+    if row and row['status'] in ('active', 'trialing'):
+        session['cca_user_id'] = row['id']
+        session['cca_plan']    = row['plan'] or 'basic'
+        session['cca_email']   = (row['email'] or '').lower()
+        session['cca_token']   = token
+        session.pop('cca_demo', None)
+        return row
+    return None
+
+
+@app.route('/setup')
+def setup():
+    """Landing page for brand-new subscribers. Restores session from token URL param."""
+    token = request.args.get('token', '')
+    _restore_session_from_token(token)
+
+    plan       = session.get('cca_plan', 'basic')
+    logged_in  = bool(session.get('cca_user_id'))
+    user_email = session.get('cca_email', '')
+    resp = make_response(render_template('index.html', plan=plan, logged_in=logged_in, user_email=user_email))
+    if token:
+        resp.set_cookie('cca_token', token, max_age=60*60*24*30, httponly=True, samesite='Lax')
+    return resp
+
+
 @app.route('/')
 def index():
     token   = request.args.get('token', '')
@@ -965,24 +1001,19 @@ def index():
     if is_demo:
         session['cca_plan'] = 'investor'
         session['cca_demo'] = True
-    elif token:
-        conn = get_db()
-        row  = conn.execute(
-            'SELECT id, plan, status FROM subscriptions WHERE token=?', (token,)
-        ).fetchone()
-        conn.close()
-        if row and row['status'] in ('active', 'trialing'):
-            plan = row['plan'] or 'basic'
-            session['cca_plan'] = plan
-            # Link token to session user if not already
-            if row['id'] and not session.get('cca_user_id'):
-                session['cca_user_id'] = row['id']
-            session.pop('cca_demo', None)
+    elif token or not session.get('cca_user_id'):
+        # Restore from URL token, then fall back to cookie token
+        active_token = token or request.cookies.get('cca_token', '')
+        _restore_session_from_token(active_token)
 
     plan       = session.get('cca_plan', 'basic')
     logged_in  = bool(session.get('cca_user_id'))
     user_email = session.get('cca_email', '')
-    return render_template('index.html', plan=plan, logged_in=logged_in, user_email=user_email)
+    resp = make_response(render_template('index.html', plan=plan, logged_in=logged_in, user_email=user_email))
+    active_token = token or request.cookies.get('cca_token', '')
+    if active_token and logged_in:
+        resp.set_cookie('cca_token', active_token, max_age=60*60*24*30, httponly=True, samesite='Lax')
+    return resp
 
 
 @app.route('/api/generate-plan', methods=['POST'])
