@@ -1042,89 +1042,136 @@ function renderPortfolio() {
 // ── Investment Goal Planner ────────────
 
 function updateGoalPlanner() {
-  const target  = parseFloat(document.getElementById('goalTarget').value)     || 0;
-  const savings = parseFloat(document.getElementById('goalSavings').value)    || 0;
-  const curAge  = parseInt(document.getElementById('goalCurrentAge').value)   || 30;
-  const tgtAge  = parseInt(document.getElementById('goalTargetAge').value)    || 65;
-  const years   = Math.max(tgtAge - curAge, 1);
+  const target    = parseFloat(document.getElementById('goalTarget').value)    || 0;
+  const savings   = parseFloat(document.getElementById('goalSavings').value)   || 0;
+  const monthly   = parseFloat(document.getElementById('goalMonthly').value)   || 0;
+  const curAge    = parseInt(document.getElementById('goalCurrentAge').value)  || 30;
+  const annualRate = parseFloat(document.getElementById('goalRate').value)     || 0.07;
 
-  const RATES        = [0.05, 0.07, 0.10];
-  const RATE_LABELS  = ['5%', '7%', '10%'];
-  const RATE_COLORS  = ['#94a3b8', '#059669', '#f59e0b'];
-
-  const monthlies = RATES.map(annualRate => {
-    const r      = annualRate / 12;
-    const n      = years * 12;
-    const factor = Math.pow(1 + r, n);
-    const pmt    = (target - savings * factor) * r / (factor - 1);
-    return Math.max(pmt, 0);
-  });
-
+  const r   = annualRate / 12;
   const fmt = v => '$' + Math.round(v).toLocaleString();
 
+  // Find how many months until portfolio reaches target
+  let months = 0;
+  let value  = savings;
+  const MAX_MONTHS = 600; // 50 years cap
+  if (monthly > 0 || r > 0) {
+    while (value < target && months < MAX_MONTHS) {
+      value = value * (1 + r) + monthly;
+      months++;
+    }
+  }
+
+  const years      = months / 12;
+  const reachAge   = curAge + years;
+  const ratePct    = Math.round(annualRate * 100);
+  const rateLabel  = annualRate === 0.05 ? 'Conservative' : annualRate === 0.10 ? 'Aggressive' : 'Moderate';
+  const reached    = value >= target && months < MAX_MONTHS;
+
+  let motiv = '';
+  if (!reached) {
+    motiv = `At ${fmt(monthly)}/month your savings won't reach ${fmt(target)} within 50 years at ${ratePct}% — try increasing your monthly investment.`;
+  } else if (years < 1) {
+    motiv = `You'll reach ${fmt(target)} in less than a year! 🎉`;
+  } else {
+    const ageStr = Number.isInteger(Math.round(reachAge)) ? Math.round(reachAge) : reachAge.toFixed(1);
+    motiv = `At ${fmt(monthly)}/month you'll reach ${fmt(target)} in ${Math.ceil(years)} year${Math.ceil(years) !== 1 ? 's' : ''} — by age ${ageStr}! 🎯`;
+  }
+
   document.getElementById('goalResults').innerHTML = `
-    <div class="goal-results-grid">
-      ${RATES.map((_, i) => `
-        <div class="goal-result-row${i === 1 ? ' goal-result-highlight' : ''}">
-          <div class="goal-result-rate">${RATE_LABELS[i]} return</div>
-          <div class="goal-result-amount">${fmt(monthlies[i])}<span class="goal-result-mo">/mo</span></div>
-        </div>
-      `).join('')}
+    <div class="goal-stat-row">
+      <div class="goal-stat">
+        <div class="goal-stat-label">Years to Goal</div>
+        <div class="goal-stat-value">${reached ? Math.ceil(years) : '50+'}${reached ? '<span class="goal-stat-unit"> yrs</span>' : ''}</div>
+      </div>
+      <div class="goal-stat">
+        <div class="goal-stat-label">Age at Goal</div>
+        <div class="goal-stat-value">${reached ? Math.round(reachAge) : '—'}</div>
+      </div>
+      <div class="goal-stat">
+        <div class="goal-stat-label">Return Rate</div>
+        <div class="goal-stat-value goal-stat-rate">${ratePct}%<span class="goal-stat-unit"> ${rateLabel}</span></div>
+      </div>
     </div>
-    <p class="goal-result-note">Investing from age ${curAge} to ${tgtAge} (${years} yrs) to reach ${fmt(target)}</p>
+    <div class="goal-motiv">${motiv}</div>
   `;
 
-  const labels   = [];
-  const datasets = [];
-  for (let yr = 0; yr <= years; yr++) labels.push(curAge + yr);
+  // Build chart data up to goal (or 50 yrs)
+  const chartMonths = reached ? months : MAX_MONTHS;
+  const step        = Math.max(1, Math.floor(chartMonths / 60)); // max ~60 points
+  const labels      = [];
+  const data        = [];
+  let v             = savings;
+  for (let m = 0; m <= chartMonths; m += step) {
+    // Recalculate cleanly for each label point
+    const fv = r > 0
+      ? savings * Math.pow(1 + r, m) + monthly * ((Math.pow(1 + r, m) - 1) / r)
+      : savings + monthly * m;
+    labels.push(curAge + m / 12);
+    data.push(parseFloat(fv.toFixed(0)));
+  }
 
-  RATES.forEach((annualRate, i) => {
-    const r   = annualRate / 12;
-    const pmt = monthlies[i];
-    const data = [];
-    for (let yr = 0; yr <= years; yr++) {
-      const n  = yr * 12;
-      const fv = r > 0
-        ? savings * Math.pow(1 + r, n) + pmt * ((Math.pow(1 + r, n) - 1) / r)
-        : savings + pmt * n;
-      data.push(parseFloat(fv.toFixed(0)));
-    }
-    datasets.push({
-      label:           RATE_LABELS[i] + ' return',
-      data,
-      borderColor:     RATE_COLORS[i],
-      backgroundColor: 'transparent',
-      tension:         0.4,
-      pointRadius:     0,
-      borderWidth:     i === 1 ? 2.5 : 1.5,
-      borderDash:      i === 0 ? [5, 4] : [],
-    });
-  });
-
-  renderGoalChart(labels, datasets);
+  renderGoalChart(labels, data, target, curAge);
 }
 
-function renderGoalChart(labels, datasets) {
+function renderGoalChart(labels, data, target, curAge) {
   if (goalChart) { goalChart.destroy(); goalChart = null; }
   const canvas = document.getElementById('goalChart');
   if (!canvas) return;
+
+  const fmtAge = v => 'Age ' + Math.round(v);
+  const fmtVal = v => v >= 1000000 ? '$' + (v / 1000000).toFixed(2) + 'M'
+                    : v >= 1000    ? '$' + (v / 1000).toFixed(0) + 'k'
+                    : '$' + v;
+
   goalChart = new Chart(canvas.getContext('2d'), {
     type: 'line',
-    data: { labels, datasets },
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Portfolio Value',
+          data,
+          borderColor: '#059669',
+          backgroundColor: 'rgba(5,150,105,0.1)',
+          fill: true,
+          tension: 0.4,
+          pointRadius: 0,
+          borderWidth: 2.5,
+        },
+        {
+          label: 'Goal',
+          data: labels.map(() => target),
+          borderColor: '#f59e0b',
+          backgroundColor: 'transparent',
+          borderDash: [6, 4],
+          pointRadius: 0,
+          borderWidth: 1.5,
+        },
+      ],
+    },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
         legend: { position: 'top', labels: { font: { family: 'Inter', size: 12 }, boxWidth: 14 } },
-        tooltip: { callbacks: { label: ctx => ` $${Math.round(ctx.parsed.y).toLocaleString()}` } },
+        tooltip: {
+          callbacks: {
+            title: items => fmtAge(items[0].parsed.x),
+            label: ctx => ` ${fmtVal(ctx.parsed.y)}`,
+          },
+        },
       },
       scales: {
         y: {
           beginAtZero: true,
-          ticks: { callback: v => v >= 1000000 ? '$'+(v/1000000).toFixed(1)+'M' : v >= 1000 ? '$'+(v/1000).toFixed(0)+'k' : '$'+v },
+          ticks: { callback: fmtVal },
           grid: { color: '#e2e8f0' },
         },
-        x: { grid: { display: false } },
+        x: {
+          ticks: { callback: v => 'Age ' + Math.round(labels[v]), maxTicksLimit: 8 },
+          grid: { display: false },
+        },
       },
     },
   });

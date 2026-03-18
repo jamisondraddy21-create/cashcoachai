@@ -351,12 +351,22 @@
             </div>
           </div>
           <div class="calc-field">
+            <label class="calc-label">Monthly Investment</label>
+            <div class="input-prefix-wrap"><span>$</span>
+              <input type="number" id="goalMonthly" class="input-field bare" value="500" min="0" oninput="updateGoalPlanner()" />
+            </div>
+          </div>
+          <div class="calc-field">
             <label class="calc-label">Your Age</label>
             <input type="number" id="goalCurrentAge" class="input-field" value="30" min="10" max="100" oninput="updateGoalPlanner()" />
           </div>
           <div class="calc-field">
-            <label class="calc-label">Target Age</label>
-            <input type="number" id="goalTargetAge" class="input-field" value="65" min="10" max="100" oninput="updateGoalPlanner()" />
+            <label class="calc-label">Expected Return</label>
+            <select id="goalRate" class="input-field" onchange="updateGoalPlanner()">
+              <option value="0.05">Conservative — 5%</option>
+              <option value="0.07" selected>Moderate — 7%</option>
+              <option value="0.10">Aggressive — 10%</option>
+            </select>
           </div>
           <div id="goalResults"></div>
         </div>

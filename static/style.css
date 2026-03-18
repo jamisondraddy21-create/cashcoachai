@@ -760,12 +760,13 @@ select.input-field { cursor: pointer; }
 }
 
 /* ─── Goal Planner ───────────────────── */
-.goal-results-grid   { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
-.goal-result-row     { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--surface-2); border-radius: var(--r); }
-.goal-result-highlight { background: rgba(5,150,105,.1); border: 1px solid rgba(5,150,105,.25); }
-.goal-result-rate    { font-size: 13px; color: var(--text-2); font-weight: 500; }
-.goal-result-amount  { font-size: 20px; font-weight: 800; color: var(--text); }
-.goal-result-mo      { font-size: 12px; font-weight: 500; color: var(--text-2); margin-left: 2px; }
+.goal-stat-row       { display: flex; gap: 8px; margin-top: 4px; }
+.goal-stat           { flex: 1; background: var(--surface-2); border-radius: var(--r); padding: 10px 12px; text-align: center; }
+.goal-stat-label     { font-size: 11px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+.goal-stat-value     { font-size: 22px; font-weight: 800; color: var(--green); line-height: 1.1; }
+.goal-stat-rate      { color: var(--text); }
+.goal-stat-unit      { font-size: 12px; font-weight: 500; color: var(--text-2); }
+.goal-motiv          { margin-top: 12px; font-size: 13px; font-weight: 600; color: var(--text); background: rgba(5,150,105,.08); border-left: 3px solid var(--green); border-radius: 0 var(--r) var(--r) 0; padding: 10px 14px; line-height: 1.5; }
 .goal-result-note    { font-size: 12px; color: var(--text-2); margin: 10px 0 0; line-height: 1.5; }
 
 /* ─── Tax Estimator ──────────────────── */
