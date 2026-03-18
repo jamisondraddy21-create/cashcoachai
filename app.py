@@ -394,14 +394,23 @@ def subscribe_success():
         if is_new and email:
             send_welcome_email(email, plan)
 
+        # Log the user in via server session — no password page needed
+        conn2 = get_db()
+        row2  = conn2.execute('SELECT id FROM subscriptions WHERE token=?', (token,)).fetchone()
+        conn2.close()
+        if row2:
+            session['cca_user_id'] = row2['id']
+            session['cca_plan']    = plan
+            session['cca_email']   = (email or '').lower()
+            session['cca_token']   = token
+
     except Exception:
-        # If Stripe/DB fails but we have a token, still get the user into the app
+        # On any failure, still send the user into the app if we have a token
         if token:
-            return redirect(f'/setup-password?token={token}')
-        # Otherwise show a clear error on the pricing page
+            return redirect(f'/?token={token}')
         return redirect('/subscribe?error=1')
 
-    return redirect(f'/setup-password?token={token}')
+    return redirect('/')
 
 
 @app.route('/api/check-subscription')
