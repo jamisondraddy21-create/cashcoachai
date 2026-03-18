@@ -87,7 +87,8 @@ async function checkSubscription() {
     const data  = await res.json();
 
     if (data.dev_mode) {
-      localStorage.setItem('cca_plan', 'investor');
+      // Dev mode: read plan from DB via token if present, else default to basic
+      localStorage.setItem('cca_plan', data.plan || 'basic');
       return true;
     }
 
@@ -99,6 +100,10 @@ async function checkSubscription() {
     localStorage.setItem('cca_plan', data.plan || 'basic');
     return true;
   } catch (_) {
+    // On network error, keep existing plan but never leave stale investor access
+    if (!localStorage.getItem('cca_plan')) {
+      localStorage.setItem('cca_plan', 'basic');
+    }
     return true;
   }
 }
@@ -395,6 +400,10 @@ function showView(name) {
 function navigate(name) {
   const noAuthRequired = ['setup', 'contact'];
   if (!state.budgetPlan && !noAuthRequired.includes(name)) { showToast('Please complete setup first', 'error'); return; }
+  if (name === 'investor' && (localStorage.getItem('cca_plan') || 'basic') !== 'investor') {
+    showToast('The Investor tab requires the Investor plan ($39.99/mo)', 'error');
+    return;
+  }
   showView(name);
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.view === name));
   if (name === 'tracker')  renderTracker();

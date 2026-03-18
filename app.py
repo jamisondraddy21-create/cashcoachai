@@ -381,9 +381,17 @@ def subscribe_success():
 
 @app.route('/api/check-subscription')
 def check_subscription():
-    # Dev mode: if Stripe isn't configured, allow all access
+    # Dev mode: if Stripe isn't configured, allow access but still respect plan from DB token
     if not stripe.api_key:
-        return jsonify({'active': True, 'dev_mode': True})
+        token = request.args.get('token', '')
+        plan  = 'basic'
+        if token:
+            conn = get_db()
+            row  = conn.execute('SELECT plan FROM subscriptions WHERE token=?', (token,)).fetchone()
+            conn.close()
+            if row and row['plan']:
+                plan = row['plan']
+        return jsonify({'active': True, 'dev_mode': True, 'plan': plan})
 
     token = request.args.get('token', '')
     if not token:
@@ -391,7 +399,7 @@ def check_subscription():
 
     conn = get_db()
     row = conn.execute(
-        'SELECT status FROM subscriptions WHERE token = ?', (token,)
+        'SELECT status, plan FROM subscriptions WHERE token = ?', (token,)
     ).fetchone()
     conn.close()
 
