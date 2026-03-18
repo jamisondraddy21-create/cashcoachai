@@ -7,6 +7,140 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <style>
+    /* ── Comparison Section ── */
+    .compare-section {
+      width: 100%;
+      margin: 56px 0 0;
+    }
+    .compare-section h2 {
+      text-align: center;
+      font-size: 1.55rem;
+      font-weight: 800;
+      color: #f8fafc;
+      margin: 0 0 28px;
+      letter-spacing: -0.02em;
+    }
+    .compare-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    .compare-col {
+      border-radius: 16px;
+      padding: 28px 28px 24px;
+      background: #1e293b;
+    }
+    .compare-col-us {
+      border: 2px solid #22c55e;
+      background: rgba(34,197,94,0.07);
+    }
+    .compare-col-them {
+      border: 2px solid #ef4444;
+      background: rgba(239,68,68,0.05);
+    }
+    .compare-col-header {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .compare-col-us .compare-col-header   { color: #22c55e; }
+    .compare-col-them .compare-col-header { color: #ef4444; }
+    .compare-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .compare-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 0.92rem;
+      color: #cbd5e1;
+      line-height: 1.4;
+    }
+    .cmp-icon {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 800;
+      margin-top: 1px;
+    }
+    .cmp-check { background: #22c55e; color: #fff; }
+    .cmp-x     { background: #ef4444; color: #fff; }
+
+    /* ── FAQ Section ── */
+    .faq-section {
+      width: 100%;
+      margin: 56px 0 0;
+    }
+    .faq-section h2 {
+      text-align: center;
+      font-size: 1.55rem;
+      font-weight: 800;
+      color: #f8fafc;
+      margin: 0 0 28px;
+      letter-spacing: -0.02em;
+    }
+    .faq-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .faq-item {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .faq-question {
+      width: 100%;
+      text-align: left;
+      background: none;
+      border: none;
+      padding: 18px 22px;
+      font-size: 0.97rem;
+      font-weight: 600;
+      color: #f1f5f9;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      font-family: inherit;
+    }
+    .faq-question:hover { color: #38bdf8; }
+    .faq-chevron {
+      flex-shrink: 0;
+      font-size: 0.8rem;
+      color: #64748b;
+      transition: transform 0.2s;
+    }
+    .faq-item.open .faq-chevron { transform: rotate(180deg); }
+    .faq-answer {
+      display: none;
+      padding: 0 22px 18px;
+      font-size: 0.9rem;
+      color: #94a3b8;
+      line-height: 1.65;
+    }
+    .faq-item.open .faq-answer { display: block; }
+
+    @media (max-width: 640px) {
+      .compare-grid { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
 <body class="sub-body">
 
@@ -113,6 +247,113 @@
   <!-- Error -->
   <div class="sub-error" id="subError"></div>
 
+  <!-- Comparison Section -->
+  <div class="compare-section">
+    <h2>Why CashCoachAI beats the rest</h2>
+    <div class="compare-grid">
+
+      <!-- CashCoachAI -->
+      <div class="compare-col compare-col-us">
+        <div class="compare-col-header">
+          <span>💰</span> CashCoachAI
+        </div>
+        <ul class="compare-list">
+          <li><span class="cmp-icon cmp-check">✓</span> AI that actually talks to you</li>
+          <li><span class="cmp-icon cmp-check">✓</span> Personalized budget plan built for you</li>
+          <li><span class="cmp-icon cmp-check">✓</span> Financial health score (1–100)</li>
+          <li><span class="cmp-icon cmp-check">✓</span> 7-day free trial — no charge until day 8</li>
+          <li><span class="cmp-icon cmp-check">✓</span> Cancel anytime, no questions asked</li>
+          <li><span class="cmp-icon cmp-check">✓</span> Starts at just $9.99/month</li>
+        </ul>
+      </div>
+
+      <!-- Competitors -->
+      <div class="compare-col compare-col-them">
+        <div class="compare-col-header">
+          <span>🏦</span> Everyone else
+        </div>
+        <ul class="compare-list">
+          <li><span class="cmp-icon cmp-x">✕</span> No real AI conversation — just static tips</li>
+          <li><span class="cmp-icon cmp-x">✕</span> Generic advice that doesn't fit your life</li>
+          <li><span class="cmp-icon cmp-x">✕</span> Expensive — $100+/month or $200+/hour</li>
+          <li><span class="cmp-icon cmp-x">✕</span> Complicated and hard to get started</li>
+          <li><span class="cmp-icon cmp-x">✕</span> No personalization to your actual situation</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- FAQ Section -->
+  <div class="faq-section">
+    <h2>Frequently asked questions</h2>
+    <div class="faq-list">
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          Can I cancel anytime?
+          <span class="faq-chevron">▼</span>
+        </button>
+        <div class="faq-answer">
+          Yes — cancel anytime from your Stripe billing portal with one click. No phone calls, no hoops, no questions asked. Your access continues until the end of your current billing period.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          Is my financial data safe?
+          <span class="faq-chevron">▼</span>
+        </button>
+        <div class="faq-answer">
+          Your data is never sold or shared with third parties. The numbers you enter are used only to power your personalized advice within the app. Payments are processed securely by Stripe — we never see or store your card details.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          What is the difference between the plans?
+          <span class="faq-chevron">▼</span>
+        </button>
+        <div class="faq-answer">
+          <strong>Basic ($9.99/mo)</strong> — Personalized budget plan, financial health score, expense tracker, and 25 AI advisor messages per month.<br><br>
+          <strong>Pro ($19.99/mo)</strong> — Everything in Basic, plus unlimited AI conversations, advanced savings goal tracking, monthly financial report, and priority support.<br><br>
+          <strong>Investor ($39.99/mo)</strong> — Everything in Pro, plus daily market news, an AI investing coach, portfolio tracker, compound growth calculator, and investing education library.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          How does the 7-day free trial work?
+          <span class="faq-chevron">▼</span>
+        </button>
+        <div class="faq-answer">
+          When you sign up you get 7 days of full access at no cost. Your card is not charged until day 8. You can cancel any time during the trial and you will never be billed. No hidden fees.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          Can the AI give me real financial advice?
+          <span class="faq-chevron">▼</span>
+        </button>
+        <div class="faq-answer">
+          CashCoachAI provides personalized financial guidance and education based on the information you share — budgeting strategies, savings tips, and investment concepts. It is not a licensed financial advisor. For major financial decisions, we recommend consulting a certified professional.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          Do I need to connect my bank account?
+          <span class="faq-chevron">▼</span>
+        </button>
+        <div class="faq-answer">
+          No. CashCoachAI does not require bank account access. You simply enter your income and expenses manually, and the AI works from there. This keeps things simple and your banking credentials completely private.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
   <!-- Demo & footer -->
   <div class="sub-divider">or</div>
   <button class="sub-btn-demo" onclick="startDemo()">👀 See a demo first</button>
@@ -162,6 +403,13 @@ function startDemo() {
 if (new URLSearchParams(window.location.search).get('error')) {
   document.getElementById('subError').textContent =
     'Something went wrong with checkout. Please try again.';
+}
+
+function toggleFaq(btn) {
+  const item = btn.closest('.faq-item');
+  const isOpen = item.classList.contains('open');
+  document.querySelectorAll('.faq-item.open').forEach(el => el.classList.remove('open'));
+  if (!isOpen) item.classList.add('open');
 }
 </script>
 </body>
