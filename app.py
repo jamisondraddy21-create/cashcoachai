@@ -1,6 +1,6 @@
 """CashCoachAI — Flask backend"""
 
-from flask import Flask, render_template, request, jsonify, Response, stream_with_context, redirect
+from flask import Flask, render_template, request, jsonify, Response, stream_with_context, redirect, session
 import anthropic
 import json
 import re
@@ -13,6 +13,7 @@ from email.mime.multipart import MIMEMultipart
 import stripe
 
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'cashcoach_dev_secret_key')
 _anthropic_client = None
 
 
@@ -154,6 +155,7 @@ def admin():
         plan     = request.form.get('plan', '').strip()
 
         if password == ADMIN_PASSWORD:
+            session['admin_auth'] = True
             if plan in ('basic', 'pro', 'investor'):
                 # Create or update a plan-specific admin token
                 email = f'admin-{plan}@cashcoachai.internal'
@@ -184,6 +186,105 @@ def admin():
             error = 'Incorrect password.'
 
     return render_template('admin.html', error=error, show_plans=show_plans, admin_password=password)
+
+
+@app.route('/admin/logout')
+def admin_logout():
+    session.pop('admin_auth', None)
+    return redirect('/admin')
+
+
+# ─── Admin Dashboard ───────────────────────────
+
+PLAN_PRICES = {'basic': 9.99, 'pro': 19.99, 'investor': 39.99}
+BAD_STATUSES = {'canceled', 'cancelled', 'past_due', 'unpaid', 'incomplete_expired'}
+
+
+@app.route('/admin/dashboard')
+def admin_dashboard():
+    if not session.get('admin_auth'):
+        return redirect('/admin')
+
+    from datetime import datetime, timedelta, timezone
+    conn = get_db()
+    rows = conn.execute(
+        'SELECT * FROM subscriptions ORDER BY created_at DESC'
+    ).fetchall()
+    conn.close()
+
+    cutoff_new = datetime.now(timezone.utc) - timedelta(days=7)
+
+    customers   = []
+    plan_counts = {'basic': 0, 'pro': 0, 'investor': 0}
+    total_mrr   = 0.0
+
+    for row in rows:
+        email     = row['email'] or '—'
+        plan      = (row['plan'] or 'basic').lower()
+        status    = row['status'] or 'unknown'
+        sub_id    = row['stripe_subscription_id']
+        cust_id   = row['stripe_customer_id']
+
+        # Skip internal admin preview accounts from stats
+        is_admin_account = email.endswith('@cashcoachai.internal')
+
+        # Parse created_at
+        try:
+            created = datetime.fromisoformat(str(row['created_at']).replace(' ', 'T'))
+            if created.tzinfo is None:
+                created = created.replace(tzinfo=timezone.utc)
+            created_str = created.strftime('%b %d, %Y')
+        except Exception:
+            created     = None
+            created_str = '—'
+
+        # Determine if new (within 7 days)
+        is_new = (created is not None) and (created >= cutoff_new) and not is_admin_account
+
+        # Try to enrich with Stripe data
+        next_billing = '—'
+        cust_name    = '—'
+        if stripe.api_key and sub_id and not is_admin_account:
+            try:
+                sub          = stripe.Subscription.retrieve(sub_id)
+                status       = sub.status
+                period_end   = sub.current_period_end
+                next_billing = datetime.fromtimestamp(period_end, tz=timezone.utc).strftime('%b %d, %Y')
+            except Exception:
+                pass
+            try:
+                cust      = stripe.Customer.retrieve(cust_id)
+                cust_name = cust.get('name') or '—'
+            except Exception:
+                pass
+
+        is_bad = status in BAD_STATUSES
+
+        if not is_admin_account and status in ('active', 'trialing'):
+            plan_counts[plan if plan in plan_counts else 'basic'] += 1
+            total_mrr += PLAN_PRICES.get(plan, 9.99)
+
+        customers.append({
+            'email':        email,
+            'name':         cust_name,
+            'plan':         plan.capitalize(),
+            'status':       status,
+            'created_str':  created_str,
+            'next_billing': next_billing,
+            'is_new':       is_new,
+            'is_bad':       is_bad,
+            'is_admin':     is_admin_account,
+        })
+
+    total_active = plan_counts['basic'] + plan_counts['pro'] + plan_counts['investor']
+
+    return render_template(
+        'admin_dashboard.html',
+        customers=customers,
+        plan_counts=plan_counts,
+        total_active=total_active,
+        total_mrr=total_mrr,
+    )
 
 
 # ─── Subscription Routes ───────────────────────

@@ -954,3 +954,170 @@ select.input-field { cursor: pointer; }
   .budget-table td:nth-child(6) { display: none; }
   .nav-tabs .nav-tab { padding: 8px 10px; font-size: 13px; }
 }
+
+/* ─── Admin Dashboard ────────────────── */
+.adm-wrap {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 28px 24px 48px;
+  font-family: 'Inter', sans-serif;
+}
+
+.adm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.adm-brand { display: flex; align-items: center; gap: 10px; }
+.adm-badge-title {
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  padding: 2px 10px;
+  border-radius: 20px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.adm-header-actions { display: flex; gap: 10px; align-items: center; }
+.adm-link-btn {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: white;
+  color: var(--text-2);
+  text-decoration: none;
+  transition: background .15s;
+}
+.adm-link-btn:hover        { background: var(--surface-2); }
+.adm-link-btn-red          { color: var(--red); border-color: var(--red-light); }
+.adm-link-btn-red:hover    { background: var(--red-light); }
+
+/* Summary stat cards */
+.adm-stats {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.adm-stat-card {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
+}
+.adm-stat-green    { border-left: 4px solid var(--green); }
+.adm-stat-pro      { border-left: 4px solid var(--green); }
+.adm-stat-investor { border-left: 4px solid var(--yellow); }
+.adm-stat-label    { font-size: 12px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .4px; }
+.adm-stat-value    { font-size: 26px; font-weight: 800; color: var(--text); line-height: 1; }
+.adm-stat-sub      { font-size: 12px; font-weight: 500; color: var(--text-3); margin-left: 4px; }
+
+/* Legend */
+.adm-legend {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 14px;
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+.adm-legend-item { color: var(--text-2); }
+
+/* Table */
+.adm-table-wrap {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow);
+  overflow-x: auto;
+}
+.adm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+.adm-table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--text-2);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+.adm-table td {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  vertical-align: middle;
+}
+.adm-table tbody tr:last-child td { border-bottom: none; }
+.adm-table tbody tr:hover td { background: var(--surface-2); }
+
+/* Row highlight states */
+.adm-row-new td  { background: #f0fdf4; }
+.adm-row-new:hover td { background: #dcfce7 !important; }
+.adm-row-bad td  { background: #fff5f5; }
+.adm-row-bad:hover td { background: #fee2e2 !important; }
+.adm-row-admin td { color: var(--text-3); }
+
+/* Columns */
+.adm-col-num   { width: 44px; color: var(--text-3); font-size: 12px; }
+.adm-col-email { font-weight: 500; }
+.adm-col-name  { color: var(--text-2); }
+
+/* Plan badges */
+.adm-plan-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+}
+.adm-plan-basic    { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
+.adm-plan-pro      { background: var(--green-50); color: #059669; border: 1px solid var(--green-light); }
+.adm-plan-investor { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+
+/* Status badges */
+.adm-status {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  text-transform: capitalize;
+  background: var(--surface-2);
+  color: var(--text-2);
+}
+.adm-status-active    { background: #f0fdf4; color: #059669; }
+.adm-status-trialing  { background: #eff6ff; color: #2563eb; }
+.adm-status-canceled,
+.adm-status-cancelled { background: var(--red-light); color: var(--red); }
+.adm-status-past_due,
+.adm-status-unpaid    { background: #fff7ed; color: #c2410c; }
+
+.adm-footer {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-3);
+  margin-top: 20px;
+}
+
+@media (max-width: 900px) {
+  .adm-stats { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 600px) {
+  .adm-stats { grid-template-columns: repeat(2, 1fr); }
+  .adm-wrap  { padding: 16px; }
+}

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CashCoachAI — Admin Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body class="sub-body">
+
+<div class="adm-wrap">
+
+  <!-- Header -->
+  <div class="adm-header">
+    <div class="adm-brand">
+      <span class="sub-logo">💰</span>
+      <span class="sub-title">CashCoach<span class="accent">AI</span>
+        <span class="adm-badge-title">Admin Dashboard</span>
+      </span>
+    </div>
+    <div class="adm-header-actions">
+      <a href="/admin" class="adm-link-btn">← Plan Preview</a>
+      <a href="/admin/logout" class="adm-link-btn adm-link-btn-red">Logout</a>
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="adm-stats">
+    <div class="adm-stat-card">
+      <div class="adm-stat-label">Active Subscribers</div>
+      <div class="adm-stat-value">{{ total_active }}</div>
+    </div>
+    <div class="adm-stat-card adm-stat-green">
+      <div class="adm-stat-label">Monthly Revenue (MRR)</div>
+      <div class="adm-stat-value">${{ "%.2f"|format(total_mrr) }}</div>
+    </div>
+    <div class="adm-stat-card">
+      <div class="adm-stat-label">📋 Basic</div>
+      <div class="adm-stat-value">{{ plan_counts.basic }}
+        <span class="adm-stat-sub">× $9.99</span>
+      </div>
+    </div>
+    <div class="adm-stat-card adm-stat-pro">
+      <div class="adm-stat-label">⭐ Pro</div>
+      <div class="adm-stat-value">{{ plan_counts.pro }}
+        <span class="adm-stat-sub">× $19.99</span>
+      </div>
+    </div>
+    <div class="adm-stat-card adm-stat-investor">
+      <div class="adm-stat-label">👑 Investor</div>
+      <div class="adm-stat-value">{{ plan_counts.investor }}
+        <span class="adm-stat-sub">× $39.99</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div class="adm-legend">
+    <span class="adm-legend-item adm-legend-new">🟢 New in last 7 days</span>
+    <span class="adm-legend-item adm-legend-bad">🔴 Cancelled / Payment failed</span>
+    <span class="adm-legend-item adm-legend-admin">⬜ Admin preview account</span>
+  </div>
+
+  <!-- Customer Table -->
+  <div class="adm-table-wrap">
+    <table class="adm-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Email</th>
+          <th>Name</th>
+          <th>Plan</th>
+          <th>Status</th>
+          <th>Signup Date</th>
+          <th>Next Billing</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if customers %}
+          {% for c in customers %}
+          <tr class="
+            {%- if c.is_admin %} adm-row-admin
+            {%- elif c.is_bad %} adm-row-bad
+            {%- elif c.is_new %} adm-row-new
+            {%- endif %}">
+            <td class="adm-col-num">{{ loop.index }}</td>
+            <td class="adm-col-email">{{ c.email }}</td>
+            <td class="adm-col-name">{{ c.name }}</td>
+            <td>
+              <span class="adm-plan-badge adm-plan-{{ c.plan | lower }}">{{ c.plan }}</span>
+            </td>
+            <td>
+              <span class="adm-status adm-status-{{ c.status }}">{{ c.status }}</span>
+            </td>
+            <td>{{ c.created_str }}</td>
+            <td>{{ c.next_billing }}</td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="7" style="text-align:center;color:var(--text-3);padding:40px">
+              No subscribers yet.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <p class="adm-footer">
+    Admin preview accounts (ending in @cashcoachai.internal) are excluded from stats.
+  </p>
+
+</div>
+
+</body>
+</html>
