@@ -156,7 +156,7 @@ async function startTrial(plan) {
 
 function startDemo() {
   localStorage.setItem('cca_demo', '1');
-  window.location.href = '/';
+  window.location.href = '/?demo=1';
 }
 
 if (new URLSearchParams(window.location.search).get('error')) {

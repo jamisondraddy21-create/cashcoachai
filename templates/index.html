@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
 </head>
 <body>
+<script>window.CCA_PLAN = '{{ plan }}';</script>
 
 <!-- ═══ NAVBAR ═══ -->
 <nav class="navbar">
@@ -21,7 +22,9 @@
     <button class="nav-tab" data-view="dashboard" onclick="navigate('dashboard')">📊 Dashboard</button>
     <button class="nav-tab" data-view="tracker"   onclick="navigate('tracker')">📝 Tracker</button>
     <button class="nav-tab" data-view="advisor"   onclick="navigate('advisor')">💬 AI Advisor</button>
-    <button class="nav-tab" data-view="investor"  onclick="navigate('investor')" id="investorNavTab" style="display:none">👑 Investor</button>
+    {% if plan == 'investor' %}
+    <button class="nav-tab" data-view="investor"  onclick="navigate('investor')" id="investorNavTab">👑 Investor</button>
+    {% endif %}
     <button class="nav-tab" data-view="contact"   onclick="navigate('contact')">✉️ Contact</button>
   </div>
   <button class="btn-reset" onclick="resetApp()" title="Start over">↺ Reset</button>

@@ -632,7 +632,24 @@ def contact():
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    token   = request.args.get('token', '')
+    is_demo = request.args.get('demo') == '1'
+
+    if is_demo:
+        session['cca_plan'] = 'investor'
+        session['cca_demo'] = True
+    elif token:
+        conn = get_db()
+        row  = conn.execute(
+            'SELECT plan, status FROM subscriptions WHERE token=?', (token,)
+        ).fetchone()
+        conn.close()
+        plan = (row['plan'] or 'basic') if row and row['status'] in ('active', 'trialing') else 'basic'
+        session['cca_plan'] = plan
+        session.pop('cca_demo', None)
+
+    plan = session.get('cca_plan', 'basic')
+    return render_template('index.html', plan=plan)
 
 
 @app.route('/api/generate-plan', methods=['POST'])

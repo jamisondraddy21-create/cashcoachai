@@ -42,25 +42,19 @@ let investChatHistory = [];
 
 // ─── Init ──────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-  // Handle subscription token from Stripe/admin redirect (?token=...&plan=...)
+  // Save token from URL if present (Stripe/admin redirect) — server already read it for rendering
   const params   = new URLSearchParams(window.location.search);
   const urlToken = params.get('token');
-  const urlPlan  = params.get('plan');
   if (urlToken) {
     localStorage.setItem('cca_sub_token', urlToken);
-    // Set plan immediately from URL so gating logic has the correct value
-    // before the API call completes. checkSubscription() will confirm/overwrite it.
-    if (urlPlan && ['basic', 'pro', 'investor'].includes(urlPlan)) {
-      localStorage.setItem('cca_plan', urlPlan);
-    }
     window.history.replaceState({}, document.title, '/');
   }
 
-  // Verify subscription before showing the app
+  // Verify subscription (confirms plan matches server-rendered nav)
   const allowed = await checkSubscription();
   if (!allowed) return;   // redirected to /subscribe
 
-  // Remove investor-only DOM elements entirely for non-investor plans
+  // Belt-and-suspenders: remove investor elements if window.CCA_PLAN isn't investor
   applyPlanGating();
 
   loadState();
@@ -82,9 +76,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // ─── Subscription Check ────────────────
 async function checkSubscription() {
-  // Demo mode: show all features including Investor tab
+  // Demo mode: banner + profiles are JS-driven; plan is already set server-side via ?demo=1
   if (localStorage.getItem('cca_demo') === '1') {
-    localStorage.setItem('cca_plan', 'investor');
+    window.CCA_PLAN = 'investor';
     document.getElementById('demoBanner').style.display = 'flex';
     loadDemoProfile('getting-by');
     return true;
@@ -95,35 +89,37 @@ async function checkSubscription() {
     const res   = await fetch(`/api/check-subscription?token=${encodeURIComponent(token)}`);
     const data  = await res.json();
 
-    if (data.dev_mode) {
-      // Dev mode: read plan from DB via token if present, else default to basic
-      localStorage.setItem('cca_plan', data.plan || 'basic');
-      return true;
-    }
-
-    if (!data.active) {
+    if (!data.dev_mode && !data.active) {
       window.location.href = '/subscribe';
       return false;
     }
 
-    localStorage.setItem('cca_plan', data.plan || 'basic');
+    const confirmedPlan = data.plan || 'basic';
+    const serverPlan    = window.CCA_PLAN;   // set by server in <script> tag
+
+    window.CCA_PLAN = confirmedPlan;
+
+    // If server rendered stale nav (e.g. session expired), reload so server re-renders correctly
+    if (confirmedPlan !== serverPlan) {
+      window.location.href = token ? `/?token=${encodeURIComponent(token)}` : '/';
+      return false;
+    }
+
     return true;
   } catch (_) {
-    // On network error, default to basic — never allow stale investor access
-    localStorage.setItem('cca_plan', 'basic');
+    // On network error, trust the server-rendered plan and never escalate to investor
+    window.CCA_PLAN = window.CCA_PLAN === 'investor' ? 'basic' : (window.CCA_PLAN || 'basic');
     return true;
   }
 }
 
 // ─── Plan Gating ───────────────────────
 function applyPlanGating() {
-  const plan = localStorage.getItem('cca_plan') || 'basic';
-  if (plan !== 'investor') {
-    // Completely remove investor nav tab from DOM
-    const investorTab = document.getElementById('investorNavTab');
-    if (investorTab) investorTab.remove();
-    // Completely remove investor hub view from DOM
+  // Primary control is server-side (Jinja). This is a belt-and-suspenders JS guard.
+  if (window.CCA_PLAN !== 'investor') {
+    const investorTab  = document.getElementById('investorNavTab');
     const investorView = document.getElementById('view-investor');
+    if (investorTab)  investorTab.remove();
     if (investorView) investorView.remove();
   }
 }
@@ -390,6 +386,7 @@ function resetApp() {
   localStorage.removeItem('cca_v1');
   localStorage.removeItem('cca_demo');
   localStorage.removeItem('cca_plan');
+  window.CCA_PLAN = 'basic';
   document.getElementById('demoBanner').style.display = 'none';
   investChatHistory = [];
   if (compoundChart) { compoundChart.destroy(); compoundChart = null; }
@@ -434,10 +431,9 @@ function showNavTabs() {
   el.style.visibility = 'visible';
   el.style.display = 'flex';
 
-  // Always re-check plan — never trust that applyPlanGating already ran
-  const plan        = localStorage.getItem('cca_plan') || 'basic';
+  // Investor tab is server-rendered only for investor plan — enforce that here too
   const investorTab = document.getElementById('investorNavTab');
-  if (investorTab) investorTab.style.display = plan === 'investor' ? '' : 'none';
+  if (investorTab) investorTab.style.display = window.CCA_PLAN === 'investor' ? '' : 'none';
 
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.view === 'dashboard'));
 }
