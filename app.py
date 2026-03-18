@@ -449,13 +449,23 @@ def check_subscription():
         return jsonify({'active': True, 'dev_mode': True, 'plan': plan})
 
     token = request.args.get('token', '')
-    if not token:
-        return jsonify({'active': False})
 
+    # Prefer token lookup; fall back to Flask session
     conn = get_db()
-    row = conn.execute(
-        'SELECT status, plan FROM subscriptions WHERE token = ?', (token,)
-    ).fetchone()
+    if token:
+        row = conn.execute(
+            'SELECT status, plan FROM subscriptions WHERE token = ?', (token,)
+        ).fetchone()
+    elif session.get('cca_user_id'):
+        row = conn.execute(
+            'SELECT status, plan FROM subscriptions WHERE id = ?', (session['cca_user_id'],)
+        ).fetchone()
+    else:
+        # Also try the cca_token cookie as a last resort
+        cookie_token = request.cookies.get('cca_token', '')
+        row = conn.execute(
+            'SELECT status, plan FROM subscriptions WHERE token = ?', (cookie_token,)
+        ).fetchone() if cookie_token else None
     conn.close()
 
     if not row:
