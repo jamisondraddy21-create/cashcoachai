@@ -759,6 +759,13 @@ select.input-field { cursor: pointer; }
   .portfolio-form .btn-secondary { grid-column: 1/-1; }
 }
 
+/* ─── Investor Hub spacing overrides ─── */
+#view-investor .main-container { padding: 20px 24px; gap: 16px; }
+#view-investor .page-header    { padding: 0; margin-bottom: -4px; }
+#view-investor .calc-layout    { padding: 16px 20px; gap: 20px; }
+#view-investor .calc-inputs    { gap: 10px; }
+#view-investor .portfolio-form { padding: 12px 16px; }
+
 @media (max-width: 640px) {
   .plans-grid, .plans-grid-3 { grid-template-columns: 1fr; }
   .plan-card-pro, .plan-card-investor { margin-top: 16px; }

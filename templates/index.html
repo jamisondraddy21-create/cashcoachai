@@ -21,7 +21,7 @@
     <button class="nav-tab" data-view="dashboard" onclick="navigate('dashboard')">📊 Dashboard</button>
     <button class="nav-tab" data-view="tracker"   onclick="navigate('tracker')">📝 Tracker</button>
     <button class="nav-tab" data-view="advisor"   onclick="navigate('advisor')">💬 AI Advisor</button>
-    <button class="nav-tab" data-view="investor"  onclick="navigate('investor')" id="investorNavTab" style="display:none">📈 Investor</button>
+    <button class="nav-tab" data-view="investor"  onclick="navigate('investor')" id="investorNavTab" style="display:none">👑 Investor</button>
     <button class="nav-tab" data-view="contact"   onclick="navigate('contact')">✉️ Contact</button>
   </div>
   <button class="btn-reset" onclick="resetApp()" title="Start over">↺ Reset</button>
@@ -305,30 +305,8 @@
 <div class="view" id="view-investor">
   <div class="main-container">
     <div class="page-header">
-      <h2>📈 Investor Hub</h2>
-      <p>Market news, education, portfolio tools, and an AI investing coach — all in one place.</p>
-    </div>
-
-    <!-- Market News + Education -->
-    <div class="two-col">
-
-      <!-- Market News -->
-      <div class="card">
-        <div class="card-header">
-          <h3>📰 Market News</h3>
-          <button class="btn-ghost-sm" onclick="fetchMarketNews()">↻ Refresh</button>
-        </div>
-        <div id="marketNewsList" class="news-list">
-          <div class="news-loading">Loading latest news…</div>
-        </div>
-      </div>
-
-      <!-- Investing Education -->
-      <div class="card">
-        <div class="card-header"><h3>🎓 Investing Basics</h3></div>
-        <div id="eduGrid" class="edu-grid"></div>
-      </div>
-
+      <h2>👑 Investor Hub</h2>
+      <p>Portfolio tools, compound calculator, AI investing coach, market news, and education — all in one place.</p>
     </div>
 
     <!-- Portfolio Tracker -->
@@ -431,6 +409,28 @@
           </button>
         </div>
       </div>
+    </div>
+
+    <!-- Market News + Education -->
+    <div class="two-col">
+
+      <!-- Market News -->
+      <div class="card">
+        <div class="card-header">
+          <h3>📰 Market News</h3>
+          <button class="btn-ghost-sm" onclick="fetchMarketNews()">↻ Refresh</button>
+        </div>
+        <div id="marketNewsList" class="news-list">
+          <div class="news-loading">Loading latest news…</div>
+        </div>
+      </div>
+
+      <!-- Investing Education -->
+      <div class="card">
+        <div class="card-header"><h3>🎓 Investing Basics</h3></div>
+        <div id="eduGrid" class="edu-grid"></div>
+      </div>
+
     </div>
 
   </div>
