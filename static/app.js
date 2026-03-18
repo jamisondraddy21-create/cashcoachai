@@ -103,10 +103,8 @@ async function checkSubscription() {
     localStorage.setItem('cca_plan', data.plan || 'basic');
     return true;
   } catch (_) {
-    // On network error, keep existing plan but never leave stale investor access
-    if (!localStorage.getItem('cca_plan')) {
-      localStorage.setItem('cca_plan', 'basic');
-    }
+    // On network error, default to basic — never allow stale investor access
+    localStorage.setItem('cca_plan', 'basic');
     return true;
   }
 }
@@ -430,10 +428,10 @@ function showNavTabs() {
   el.style.visibility = 'visible';
   el.style.display = 'flex';
 
-  // Investor tab is already removed from DOM for non-investor plans by applyPlanGating().
-  // For investor plan users, make sure it's visible.
+  // Always re-check plan — never trust that applyPlanGating already ran
+  const plan        = localStorage.getItem('cca_plan') || 'basic';
   const investorTab = document.getElementById('investorNavTab');
-  if (investorTab) investorTab.style.display = '';
+  if (investorTab) investorTab.style.display = plan === 'investor' ? '' : 'none';
 
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.view === 'dashboard'));
 }
