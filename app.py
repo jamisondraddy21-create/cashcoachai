@@ -420,8 +420,8 @@ def subscribe_success():
         return redirect('/subscribe?error=1')
 
     if is_new:
-        print(f'[DEBUG /subscribe/success] redirecting new user to /setup?token={token}', flush=True)
-        return redirect(f'/setup?token={token}')
+        print(f'[DEBUG /subscribe/success] redirecting new user to /create-password?token={token}', flush=True)
+        return redirect(f'/create-password?token={token}')
     print(f'[DEBUG /subscribe/success] redirecting returning user to /?token={token}', flush=True)
     return redirect(f'/?token={token}')
 
@@ -773,6 +773,28 @@ def api_login():
 def logout():
     session.clear()
     return redirect('/subscribe')
+
+
+@app.route('/create-password')
+def create_password_page():
+    token = request.args.get('token', '')
+    if not token:
+        return redirect('/subscribe')
+
+    conn = get_db()
+    row  = conn.execute(
+        'SELECT id, email, password_hash, plan, status FROM subscriptions WHERE token=?', (token,)
+    ).fetchone()
+    conn.close()
+
+    if not row:
+        return redirect('/subscribe')
+
+    # Already has a password — send to login
+    if row['password_hash']:
+        return redirect('/login?returning=1')
+
+    return render_template('create_password.html', token=token, email=row['email'] or '')
 
 
 @app.route('/setup-password')
