@@ -374,6 +374,9 @@ def subscribe_success():
         conn.commit()
         conn.close()
 
+        if not existing and email:
+            send_welcome_email(email, plan)
+
         return redirect(f'/?token={token}')
     except Exception:
         return redirect('/subscribe?error=1')
@@ -587,6 +590,51 @@ GUIDELINES:
     )
 
 
+# ─── Email Helpers ─────────────────────────────
+
+PLAN_DISPLAY = {
+    'basic':    'Basic',
+    'pro':      'Pro',
+    'investor': 'Investor',
+}
+
+def send_welcome_email(to_email, plan):
+    if not SMTP_EMAIL or not SMTP_PASSWORD:
+        return
+    plan_name = PLAN_DISPLAY.get(plan, plan.capitalize())
+    app_url   = APP_URL
+
+    subject = 'Welcome to CashCoachAI! 🎉'
+    body = (
+        f"Hi there,\n\n"
+        f"Welcome to CashCoachAI! We're thrilled to have you on board.\n\n"
+        f"Your Plan: {plan_name}\n\n"
+        f"Getting Started:\n"
+        f"  1. Head to the app and enter your monthly income and bills\n"
+        f"  2. Generate your personalized budget plan with one click\n"
+        f"  3. Chat with your AI advisor any time you need guidance\n\n"
+        f"Open the app here:\n"
+        f"  {app_url}\n\n"
+        f"If you have any questions, just reply to this email — we're happy to help.\n\n"
+        f"— The CashCoachAI Team\n"
+        f"support@cashcoachai.com\n"
+    )
+
+    try:
+        msg             = MIMEMultipart('alternative')
+        msg['Subject']  = subject
+        msg['From']     = 'CashCoachAI <support@cashcoachai.com>'
+        msg['To']       = to_email
+        msg.attach(MIMEText(body, 'plain'))
+
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.starttls()
+            server.login(SMTP_EMAIL, SMTP_PASSWORD)
+            server.sendmail(SMTP_EMAIL, to_email, msg.as_string())
+    except Exception:
+        pass  # Don't block the user flow if email fails
+
+
 # ─── Contact Route ─────────────────────────────
 
 @app.route('/api/contact', methods=['POST'])
@@ -604,7 +652,7 @@ def contact():
 
     try:
         msg             = MIMEMultipart('alternative')
-        msg['Subject']  = f'CashCoachAI Contact: {name}'
+        msg['Subject']  = f'New Support Request from {name}'
         msg['From']     = SMTP_EMAIL
         msg['To']       = CONTACT_EMAIL_TO
         msg['Reply-To'] = email
