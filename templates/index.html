@@ -333,53 +333,66 @@
       <div id="portfolioTable" class="portfolio-table-wrap"></div>
     </div>
 
-    <!-- Compound Growth Calculator -->
+    <!-- Investment Goal Planner -->
     <div class="card">
-      <div class="card-header"><h3>🔢 Compound Growth Calculator</h3></div>
+      <div class="card-header"><h3>🎯 Investment Goal Planner</h3></div>
       <div class="calc-layout">
         <div class="calc-inputs">
           <div class="calc-field">
-            <label class="calc-label">Initial Investment</label>
+            <label class="calc-label">Target Amount</label>
             <div class="input-prefix-wrap"><span>$</span>
-              <input type="number" id="calcInitial" class="input-field bare" value="1000" min="0" oninput="updateCalc()" />
+              <input type="number" id="goalTarget" class="input-field bare" value="1000000" min="0" oninput="updateGoalPlanner()" />
             </div>
           </div>
           <div class="calc-field">
-            <label class="calc-label">Monthly Contribution</label>
+            <label class="calc-label">Current Savings</label>
             <div class="input-prefix-wrap"><span>$</span>
-              <input type="number" id="calcMonthly" class="input-field bare" value="200" min="0" oninput="updateCalc()" />
+              <input type="number" id="goalSavings" class="input-field bare" value="5000" min="0" oninput="updateGoalPlanner()" />
             </div>
           </div>
           <div class="calc-field">
-            <label class="calc-label">Annual Return Rate</label>
-            <div class="input-prefix-wrap"><span>%</span>
-              <input type="number" id="calcRate" class="input-field bare" value="8" min="0" max="50" step="0.1" oninput="updateCalc()" />
-            </div>
+            <label class="calc-label">Your Age</label>
+            <input type="number" id="goalCurrentAge" class="input-field" value="30" min="10" max="100" oninput="updateGoalPlanner()" />
           </div>
           <div class="calc-field">
-            <label class="calc-label">Time Horizon — <span id="calcYearsLabel">20 yrs</span></label>
-            <input type="range" id="calcYears" class="calc-slider" min="1" max="40" value="20"
-              oninput="document.getElementById('calcYearsLabel').textContent=this.value+' yrs'; updateCalc()" />
+            <label class="calc-label">Target Age</label>
+            <input type="number" id="goalTargetAge" class="input-field" value="65" min="10" max="100" oninput="updateGoalPlanner()" />
           </div>
-          <div class="calc-results">
-            <div class="calc-result-item">
-              <div class="calc-result-label">Total Value</div>
-              <div class="calc-result-value calc-value-green" id="calcTotal">—</div>
-            </div>
-            <div class="calc-result-item">
-              <div class="calc-result-label">Amount Invested</div>
-              <div class="calc-result-value" id="calcInvested">—</div>
-            </div>
-            <div class="calc-result-item">
-              <div class="calc-result-label">Investment Gains</div>
-              <div class="calc-result-value calc-value-green" id="calcGains">—</div>
-            </div>
-          </div>
+          <div id="goalResults"></div>
         </div>
         <div class="calc-chart-wrap">
-          <canvas id="compoundChart"></canvas>
+          <canvas id="goalChart"></canvas>
         </div>
       </div>
+    </div>
+
+    <!-- Tax Estimator -->
+    <div class="card">
+      <div class="card-header"><h3>🧾 Tax Estimator</h3></div>
+      <div class="tax-layout">
+        <div class="tax-inputs">
+          <div class="calc-field">
+            <label class="calc-label">Annual Income</label>
+            <div class="input-prefix-wrap"><span>$</span>
+              <input type="number" id="taxIncome" class="input-field bare" value="75000" min="0" oninput="estimateTax()" />
+            </div>
+          </div>
+          <div class="calc-field">
+            <label class="calc-label">Filing Status</label>
+            <select id="taxStatus" class="input-field" onchange="estimateTax()">
+              <option value="single">Single</option>
+              <option value="married">Married Filing Jointly</option>
+              <option value="hoh">Head of Household</option>
+            </select>
+          </div>
+          <div class="calc-field">
+            <label class="calc-label">State</label>
+            <select id="taxState" class="input-field" onchange="estimateTax()"></select>
+          </div>
+        </div>
+        <div id="taxResults" class="tax-results-wrap"></div>
+      </div>
+      <div id="taxTips" class="tax-tips-list"></div>
     </div>
 
     <!-- AI Investing Coach -->

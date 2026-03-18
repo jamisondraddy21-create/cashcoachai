@@ -37,7 +37,7 @@ const emoji = cat => EMOJIS[cat] || '📦';
 
 let budgetChart       = null;
 let spendingChart     = null;
-let compoundChart     = null;
+let goalChart         = null;
 let investChatHistory = [];
 
 // ─── Init ──────────────────────────────
@@ -389,7 +389,7 @@ function resetApp() {
   window.CCA_PLAN = 'basic';
   document.getElementById('demoBanner').style.display = 'none';
   investChatHistory = [];
-  if (compoundChart) { compoundChart.destroy(); compoundChart = null; }
+  if (goalChart) { goalChart.destroy(); goalChart = null; }
   state = { income:0, bills:[], habits:[], expenses:[], budgetPlan:null, chatHistory:[] };
   if (budgetChart)   { budgetChart.destroy();   budgetChart   = null; }
   if (spendingChart) { spendingChart.destroy();  spendingChart = null; }
@@ -875,7 +875,8 @@ function renderInvestorHub() {
   renderEducation();
   fetchMarketNews();
   renderPortfolio();
-  updateCalc();
+  updateGoalPlanner();
+  initTaxEstimator();
 }
 
 // ── Education ─────────────────────────
@@ -1038,92 +1039,257 @@ function renderPortfolio() {
     </div>`;
 }
 
-// ── Compound Calculator ───────────────
-function updateCalc() {
-  const initial  = parseFloat(document.getElementById('calcInitial').value)  || 0;
-  const monthly  = parseFloat(document.getElementById('calcMonthly').value)  || 0;
-  const rate     = parseFloat(document.getElementById('calcRate').value)      || 0;
-  const years    = parseInt(document.getElementById('calcYears').value)       || 1;
+// ── Investment Goal Planner ────────────
 
-  const r       = rate / 100 / 12;   // monthly rate
-  const n       = years * 12;        // total months
-  const labels  = [];
-  const values  = [];
-  const invested= [];
+function updateGoalPlanner() {
+  const target  = parseFloat(document.getElementById('goalTarget').value)     || 0;
+  const savings = parseFloat(document.getElementById('goalSavings').value)    || 0;
+  const curAge  = parseInt(document.getElementById('goalCurrentAge').value)   || 30;
+  const tgtAge  = parseInt(document.getElementById('goalTargetAge').value)    || 65;
+  const years   = Math.max(tgtAge - curAge, 1);
 
-  for (let yr = 0; yr <= years; yr++) {
-    const m   = yr * 12;
-    const fv  = r > 0
-      ? initial * Math.pow(1 + r, m) + monthly * ((Math.pow(1 + r, m) - 1) / r)
-      : initial + monthly * m;
-    labels.push(yr === 0 ? 'Now' : `Yr ${yr}`);
-    values.push(parseFloat(fv.toFixed(2)));
-    invested.push(parseFloat((initial + monthly * m).toFixed(2)));
-  }
+  const RATES        = [0.05, 0.07, 0.10];
+  const RATE_LABELS  = ['5%', '7%', '10%'];
+  const RATE_COLORS  = ['#94a3b8', '#059669', '#f59e0b'];
 
-  const totalValue    = values[values.length - 1];
-  const totalInvested = invested[invested.length - 1];
-  const totalGains    = totalValue - totalInvested;
+  const monthlies = RATES.map(annualRate => {
+    const r      = annualRate / 12;
+    const n      = years * 12;
+    const factor = Math.pow(1 + r, n);
+    const pmt    = (target - savings * factor) * r / (factor - 1);
+    return Math.max(pmt, 0);
+  });
 
-  const fmt = n => '$' + Math.round(n).toLocaleString();
-  document.getElementById('calcTotal').textContent    = fmt(totalValue);
-  document.getElementById('calcInvested').textContent = fmt(totalInvested);
-  document.getElementById('calcGains').textContent    = fmt(totalGains);
+  const fmt = v => '$' + Math.round(v).toLocaleString();
 
-  renderCompoundChart(labels, values, invested);
+  document.getElementById('goalResults').innerHTML = `
+    <div class="goal-results-grid">
+      ${RATES.map((_, i) => `
+        <div class="goal-result-row${i === 1 ? ' goal-result-highlight' : ''}">
+          <div class="goal-result-rate">${RATE_LABELS[i]} return</div>
+          <div class="goal-result-amount">${fmt(monthlies[i])}<span class="goal-result-mo">/mo</span></div>
+        </div>
+      `).join('')}
+    </div>
+    <p class="goal-result-note">Investing from age ${curAge} to ${tgtAge} (${years} yrs) to reach ${fmt(target)}</p>
+  `;
+
+  const labels   = [];
+  const datasets = [];
+  for (let yr = 0; yr <= years; yr++) labels.push(curAge + yr);
+
+  RATES.forEach((annualRate, i) => {
+    const r   = annualRate / 12;
+    const pmt = monthlies[i];
+    const data = [];
+    for (let yr = 0; yr <= years; yr++) {
+      const n  = yr * 12;
+      const fv = r > 0
+        ? savings * Math.pow(1 + r, n) + pmt * ((Math.pow(1 + r, n) - 1) / r)
+        : savings + pmt * n;
+      data.push(parseFloat(fv.toFixed(0)));
+    }
+    datasets.push({
+      label:           RATE_LABELS[i] + ' return',
+      data,
+      borderColor:     RATE_COLORS[i],
+      backgroundColor: 'transparent',
+      tension:         0.4,
+      pointRadius:     0,
+      borderWidth:     i === 1 ? 2.5 : 1.5,
+      borderDash:      i === 0 ? [5, 4] : [],
+    });
+  });
+
+  renderGoalChart(labels, datasets);
 }
 
-function renderCompoundChart(labels, values, invested) {
-  if (compoundChart) { compoundChart.destroy(); compoundChart = null; }
-  const ctx = document.getElementById('compoundChart').getContext('2d');
-  compoundChart = new Chart(ctx, {
+function renderGoalChart(labels, datasets) {
+  if (goalChart) { goalChart.destroy(); goalChart = null; }
+  const canvas = document.getElementById('goalChart');
+  if (!canvas) return;
+  goalChart = new Chart(canvas.getContext('2d'), {
     type: 'line',
-    data: {
-      labels,
-      datasets: [
-        {
-          label: 'Total Value',
-          data: values,
-          borderColor: '#059669',
-          backgroundColor: 'rgba(5,150,105,.12)',
-          fill: true,
-          tension: 0.4,
-          pointRadius: 3,
-          borderWidth: 2,
-        },
-        {
-          label: 'Amount Invested',
-          data: invested,
-          borderColor: '#94a3b8',
-          backgroundColor: 'transparent',
-          borderDash: [5, 4],
-          tension: 0.4,
-          pointRadius: 0,
-          borderWidth: 1.5,
-        },
-      ],
-    },
+    data: { labels, datasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
         legend: { position: 'top', labels: { font: { family: 'Inter', size: 12 }, boxWidth: 14 } },
-        tooltip: {
-          callbacks: {
-            label: ctx => ` $${Math.round(ctx.parsed.y).toLocaleString()}`,
-          },
-        },
+        tooltip: { callbacks: { label: ctx => ` $${Math.round(ctx.parsed.y).toLocaleString()}` } },
       },
       scales: {
         y: {
           beginAtZero: true,
-          ticks: { callback: v => '$' + (v >= 1000 ? (v/1000).toFixed(0)+'k' : v) },
+          ticks: { callback: v => v >= 1000000 ? '$'+(v/1000000).toFixed(1)+'M' : v >= 1000 ? '$'+(v/1000).toFixed(0)+'k' : '$'+v },
           grid: { color: '#e2e8f0' },
         },
         x: { grid: { display: false } },
       },
     },
   });
+}
+
+// ── Tax Estimator ──────────────────────
+
+const FEDERAL_BRACKETS = {
+  single:  [[11600,0.10],[47150,0.12],[100525,0.22],[191950,0.24],[243725,0.32],[609350,0.35],[Infinity,0.37]],
+  married: [[23200,0.10],[94300,0.12],[201050,0.22],[383900,0.24],[487450,0.32],[731200,0.35],[Infinity,0.37]],
+  hoh:     [[16550,0.10],[63100,0.12],[100500,0.22],[191950,0.24],[243700,0.32],[609350,0.35],[Infinity,0.37]],
+};
+const STANDARD_DEDUCTION = { single: 14600, married: 29200, hoh: 21900 };
+const STATE_TAX = {
+  AL:0.05,AK:0,AZ:0.025,AR:0.047,CA:0.093,CO:0.044,CT:0.065,DE:0.066,
+  FL:0,GA:0.055,HI:0.11,ID:0.058,IL:0.0495,IN:0.0305,IA:0.057,KS:0.057,
+  KY:0.045,LA:0.0425,ME:0.075,MD:0.0525,MA:0.05,MI:0.0425,MN:0.0785,
+  MS:0.05,MO:0.048,MT:0.069,NE:0.0664,NV:0,NH:0,NJ:0.0637,NM:0.059,
+  NY:0.0685,NC:0.0475,ND:0.025,OH:0.04,OK:0.0475,OR:0.0875,PA:0.0307,
+  RI:0.0599,SC:0.07,SD:0,TN:0,TX:0,UT:0.0485,VT:0.0875,VA:0.0575,
+  WA:0,WV:0.065,WI:0.0765,WY:0,DC:0.085,
+};
+const STATE_NAMES = {
+  AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',
+  CO:'Colorado',CT:'Connecticut',DE:'Delaware',FL:'Florida',GA:'Georgia',
+  HI:'Hawaii',ID:'Idaho',IL:'Illinois',IN:'Indiana',IA:'Iowa',KS:'Kansas',
+  KY:'Kentucky',LA:'Louisiana',ME:'Maine',MD:'Maryland',MA:'Massachusetts',
+  MI:'Michigan',MN:'Minnesota',MS:'Mississippi',MO:'Missouri',MT:'Montana',
+  NE:'Nebraska',NV:'Nevada',NH:'New Hampshire',NJ:'New Jersey',NM:'New Mexico',
+  NY:'New York',NC:'North Carolina',ND:'North Dakota',OH:'Ohio',OK:'Oklahoma',
+  OR:'Oregon',PA:'Pennsylvania',RI:'Rhode Island',SC:'South Carolina',
+  SD:'South Dakota',TN:'Tennessee',TX:'Texas',UT:'Utah',VT:'Vermont',
+  VA:'Virginia',WA:'Washington',WV:'West Virginia',WI:'Wisconsin',WY:'Wyoming',
+  DC:'Washington D.C.',
+};
+
+function initTaxEstimator() {
+  const sel = document.getElementById('taxState');
+  if (!sel || sel.options.length > 0) { estimateTax(); return; }
+  Object.entries(STATE_NAMES)
+    .sort((a, b) => a[1].localeCompare(b[1]))
+    .forEach(([code, name]) => {
+      const opt = document.createElement('option');
+      opt.value = code; opt.textContent = name;
+      if (code === 'TX') opt.selected = true;
+      sel.appendChild(opt);
+    });
+  estimateTax();
+}
+
+function calcFederalTax(taxableIncome, status) {
+  const brackets = FEDERAL_BRACKETS[status];
+  let tax = 0, prev = 0;
+  for (const [limit, rate] of brackets) {
+    if (taxableIncome <= 0) break;
+    const slice = Math.min(taxableIncome, limit - prev);
+    tax += slice * rate;
+    taxableIncome -= slice;
+    prev = limit;
+  }
+  return tax;
+}
+
+function estimateTax() {
+  const income    = parseFloat(document.getElementById('taxIncome')?.value)  || 0;
+  const status    = document.getElementById('taxStatus')?.value  || 'single';
+  const stateCode = document.getElementById('taxState')?.value   || 'TX';
+
+  const deduction     = STANDARD_DEDUCTION[status] || 14600;
+  const taxableIncome = Math.max(income - deduction, 0);
+  const federalTax    = calcFederalTax(taxableIncome, status);
+  const stateRate     = STATE_TAX[stateCode] ?? 0;
+  const stateTax      = income * stateRate;
+  const totalTax      = federalTax + stateTax;
+  const effectiveRate = income > 0 ? (totalTax / income) * 100 : 0;
+  const takeHome      = income - totalTax;
+  const noState       = stateRate === 0;
+  const fmt           = v => '$' + Math.round(v).toLocaleString();
+
+  document.getElementById('taxResults').innerHTML = `
+    <div class="tax-results-grid">
+      <div class="tax-result-item">
+        <div class="tax-result-label">Federal Tax</div>
+        <div class="tax-result-value tax-val-red">${fmt(federalTax)}</div>
+      </div>
+      <div class="tax-result-item">
+        <div class="tax-result-label">State Tax${noState ? ' (no income tax)' : ''}</div>
+        <div class="tax-result-value${noState ? '' : ' tax-val-red'}">${fmt(stateTax)}</div>
+      </div>
+      <div class="tax-result-item">
+        <div class="tax-result-label">Total Tax Bill</div>
+        <div class="tax-result-value tax-val-red">${fmt(totalTax)}</div>
+      </div>
+      <div class="tax-result-item tax-result-highlight">
+        <div class="tax-result-label">Effective Tax Rate</div>
+        <div class="tax-result-value">${effectiveRate.toFixed(1)}%</div>
+      </div>
+      <div class="tax-result-item">
+        <div class="tax-result-label">Est. Take-Home</div>
+        <div class="tax-result-value tax-val-green">${fmt(takeHome)}</div>
+      </div>
+    </div>
+    <p class="goal-result-note">Standard deduction applied (${fmt(deduction)}). Estimate only — consult a tax professional.</p>
+  `;
+
+  renderTaxTips(income, status, stateCode, stateRate);
+}
+
+function renderTaxTips(income, status, stateCode, stateRate) {
+  const tips = [];
+
+  tips.push({
+    icon: '🏛️',
+    title: 'Max your 401(k)',
+    body: `Contributing up to $23,000/yr to a traditional 401(k) reduces your federal taxable income dollar-for-dollar. At a 22% bracket that's $5,060 in federal tax savings alone.`,
+  });
+
+  const rothLimit = status === 'married' ? 14000 : 7000;
+  const rothEligible = income < 146000 || (status === 'married' && income < 230000);
+  if (rothEligible) {
+    tips.push({
+      icon: '💡',
+      title: 'Open a Roth IRA',
+      body: `You can contribute up to $${(rothLimit/2).toLocaleString()}/yr to a Roth IRA. Contributions are post-tax, but all future growth and withdrawals are 100% tax-free in retirement.`,
+    });
+  } else {
+    tips.push({
+      icon: '🏥',
+      title: 'Use an HSA if eligible',
+      body: 'If you have a high-deductible health plan, an HSA gives a triple tax benefit: pre-tax contributions, tax-free growth, and tax-free withdrawals for medical expenses.',
+    });
+  }
+
+  if (stateRate > 0.07) {
+    tips.push({
+      icon: '📦',
+      title: 'Claim state-specific deductions',
+      body: `${STATE_NAMES[stateCode]} has a ${(stateRate*100).toFixed(1)}% rate. Check if your state allows deductions for retirement contributions, student loan interest, or childcare — these can meaningfully cut your state tax bill.`,
+    });
+  } else if (stateRate === 0) {
+    tips.push({
+      icon: '✅',
+      title: 'Leverage your no-income-tax advantage',
+      body: `${STATE_NAMES[stateCode]} has no state income tax. Invest the savings into tax-efficient index funds (VTI, VOO) in a taxable brokerage — your biggest gains come from keeping more of your income working for you.`,
+    });
+  } else {
+    tips.push({
+      icon: '📋',
+      title: 'Track deductible expenses',
+      body: 'Record business expenses, home office costs, charitable donations, and education costs. If total deductions exceed the standard deduction, itemizing can lower your taxable income further.',
+    });
+  }
+
+  document.getElementById('taxTips').innerHTML = `
+    <div class="tax-tips-header">3 ways to reduce your tax bill</div>
+    ${tips.map(t => `
+      <div class="tax-tip-item">
+        <div class="tax-tip-icon">${t.icon}</div>
+        <div>
+          <div class="tax-tip-title">${t.title}</div>
+          <div class="tax-tip-body">${t.body}</div>
+        </div>
+      </div>
+    `).join('')}
+  `;
 }
 
 // ── Investing Chat ────────────────────

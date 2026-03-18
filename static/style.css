@@ -759,12 +759,46 @@ select.input-field { cursor: pointer; }
   .portfolio-form .btn-secondary { grid-column: 1/-1; }
 }
 
+/* ─── Goal Planner ───────────────────── */
+.goal-results-grid   { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.goal-result-row     { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--surface-2); border-radius: var(--r); }
+.goal-result-highlight { background: rgba(5,150,105,.1); border: 1px solid rgba(5,150,105,.25); }
+.goal-result-rate    { font-size: 13px; color: var(--text-2); font-weight: 500; }
+.goal-result-amount  { font-size: 20px; font-weight: 800; color: var(--text); }
+.goal-result-mo      { font-size: 12px; font-weight: 500; color: var(--text-2); margin-left: 2px; }
+.goal-result-note    { font-size: 12px; color: var(--text-2); margin: 10px 0 0; line-height: 1.5; }
+
+/* ─── Tax Estimator ──────────────────── */
+.tax-layout          { display: grid; grid-template-columns: 300px 1fr; gap: 24px; padding: 20px 24px; align-items: start; }
+.tax-inputs          { display: flex; flex-direction: column; gap: 14px; }
+.tax-results-wrap    { }
+.tax-results-grid    { display: flex; flex-direction: column; gap: 6px; }
+.tax-result-item     { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--surface-2); border-radius: var(--r); }
+.tax-result-highlight { background: rgba(5,150,105,.08); }
+.tax-result-label    { font-size: 13px; color: var(--text-2); font-weight: 500; }
+.tax-result-value    { font-size: 18px; font-weight: 800; }
+.tax-val-red         { color: #dc2626; }
+.tax-val-green       { color: var(--green); }
+.tax-tips-list       { padding: 0 24px 20px; display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--border); margin-top: 4px; padding-top: 16px; }
+.tax-tips-header     { font-size: 13px; font-weight: 700; color: var(--text-2); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 2px; }
+.tax-tip-item        { display: flex; gap: 12px; align-items: flex-start; }
+.tax-tip-icon        { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+.tax-tip-title       { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+.tax-tip-body        { font-size: 13px; color: var(--text-2); line-height: 1.55; }
+
+@media (max-width: 760px) {
+  .tax-layout { grid-template-columns: 1fr; }
+}
+
 /* ─── Investor Hub spacing overrides ─── */
 #view-investor .main-container { padding: 20px 24px; gap: 16px; }
 #view-investor .page-header    { padding: 0; margin-bottom: -4px; }
 #view-investor .calc-layout    { padding: 16px 20px; gap: 20px; }
 #view-investor .calc-inputs    { gap: 10px; }
 #view-investor .portfolio-form { padding: 12px 16px; }
+#view-investor .tax-layout     { padding: 16px 20px; gap: 20px; }
+#view-investor .tax-inputs     { gap: 10px; }
+#view-investor .tax-tips-list  { padding: 0 20px 16px; padding-top: 14px; }
 
 @media (max-width: 640px) {
   .plans-grid, .plans-grid-3 { grid-template-columns: 1fr; }
