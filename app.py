@@ -399,18 +399,7 @@ def subscribe_success():
         if is_new and email:
             send_welcome_email(email, plan)
 
-        # Log the user in via server session — no password page needed
-        conn2 = get_db()
-        row2  = conn2.execute('SELECT id FROM subscriptions WHERE token=?', (token,)).fetchone()
-        conn2.close()
-        if row2:
-            session['cca_user_id'] = row2['id']
-            session['cca_plan']    = plan
-            session['cca_email']   = (email or '').lower()
-            session['cca_token']   = token
-            print(f'[DEBUG /subscribe/success] session set: user_id={row2["id"]} plan={plan!r}', flush=True)
-        else:
-            print(f'[DEBUG /subscribe/success] WARNING: token lookup returned no row', flush=True)
+        print(f'[DEBUG /subscribe/success] is_new={is_new} token={token!r} — cookie will be set on redirect target', flush=True)
 
     except Exception as e:
         print(f'[DEBUG /subscribe/success] EXCEPTION: {e}', flush=True)
@@ -448,33 +437,16 @@ def check_subscription():
                 plan = row['plan']
         return jsonify({'active': True, 'dev_mode': True, 'plan': plan})
 
-    token = request.args.get('token', '')
+    url_token = request.args.get('token', '')
+    user = get_current_user(url_token=url_token)
 
-    # Prefer token lookup; fall back to Flask session
-    conn = get_db()
-    if token:
-        row = conn.execute(
-            'SELECT status, plan FROM subscriptions WHERE token = ?', (token,)
-        ).fetchone()
-    elif session.get('cca_user_id'):
-        row = conn.execute(
-            'SELECT status, plan FROM subscriptions WHERE id = ?', (session['cca_user_id'],)
-        ).fetchone()
-    else:
-        # Also try the cca_token cookie as a last resort
-        cookie_token = request.cookies.get('cca_token', '')
-        row = conn.execute(
-            'SELECT status, plan FROM subscriptions WHERE token = ?', (cookie_token,)
-        ).fetchone() if cookie_token else None
-    conn.close()
-
-    if not row:
+    if not user:
         return jsonify({'active': False})
 
     return jsonify({
-        'active': row['status'] in ('active', 'trialing'),
-        'status': row['status'],
-        'plan':   row['plan'] if row['plan'] else 'basic',
+        'active': user['status'] in ('active', 'trialing'),
+        'status': user['status'],
+        'plan':   user['plan'] or 'basic',
     })
 
 
@@ -742,7 +714,7 @@ def contact():
 
 @app.route('/login')
 def login_page():
-    if session.get('cca_user_id'):
+    if get_current_user():
         return redirect('/')
     returning = request.args.get('returning') == '1'
     return render_template('login.html', returning=returning)
@@ -772,17 +744,16 @@ def api_login():
     if row['status'] not in ('active', 'trialing'):
         return jsonify({'error': 'Your subscription is not active. Please resubscribe to continue.'}), 403
 
-    session['cca_user_id'] = row['id']
-    session['cca_plan']    = row['plan'] or 'basic'
-    session['cca_email']   = email
-    session['cca_token']   = row['token']
-    return jsonify({'success': True, 'plan': row['plan'] or 'basic'})
+    resp = make_response(jsonify({'success': True, 'plan': row['plan'] or 'basic'}))
+    _auth_cookie(resp, row['token'])
+    return resp
 
 
 @app.route('/logout')
 def logout():
-    session.clear()
-    return redirect('/subscribe')
+    resp = make_response(redirect('/subscribe'))
+    resp.delete_cookie('cca_token')
+    return resp
 
 
 @app.route('/create-password')
@@ -857,32 +828,20 @@ def api_set_password():
     conn.commit()
     conn.close()
 
-    session['cca_user_id'] = row['id']
-    session['cca_plan']    = row['plan'] or 'basic'
-    session['cca_email']   = (row['email'] or '').lower()
-    session['cca_token']   = token
-    return jsonify({'success': True, 'plan': row['plan'] or 'basic'})
+    resp = make_response(jsonify({'success': True, 'plan': row['plan'] or 'basic'}))
+    _auth_cookie(resp, token)
+    return resp
 
 
 # ─── User Data Routes ───────────────────────────
 
 @app.route('/api/save-data', methods=['POST'])
 def save_data():
-    data    = request.json or {}
-    user_id = session.get('cca_user_id')
-
-    # Fallback: accept token for the first save right after password setup
-    if not user_id:
-        token = data.get('token', '')
-        if token:
-            conn = get_db()
-            row  = conn.execute('SELECT id FROM subscriptions WHERE token=?', (token,)).fetchone()
-            conn.close()
-            if row:
-                user_id = row['id']
-
-    if not user_id:
+    data = request.json or {}
+    user = get_current_user()
+    if not user:
         return jsonify({'error': 'Not authenticated.'}), 401
+    user_id = user['id']
 
     income      = float(data.get('income', 0))
     bills       = json.dumps(data.get('bills', []))
@@ -905,9 +864,10 @@ def save_data():
 
 @app.route('/api/load-data')
 def load_data():
-    user_id = session.get('cca_user_id')
-    if not user_id:
+    user = get_current_user()
+    if not user:
         return jsonify({'data': None})
+    user_id = user['id']
 
     conn = get_db()
     row  = conn.execute(
@@ -928,26 +888,16 @@ def load_data():
 
 @app.route('/api/account')
 def account_info():
-    user_id = session.get('cca_user_id')
-    if not user_id:
+    user = get_current_user()
+    if not user:
         return jsonify({'error': 'Not logged in.'}), 401
-
-    conn = get_db()
-    row  = conn.execute(
-        'SELECT email, plan, status FROM subscriptions WHERE id=?', (user_id,)
-    ).fetchone()
-    conn.close()
-
-    if not row:
-        return jsonify({'error': 'Account not found.'}), 404
-
-    return jsonify({'email': row['email'], 'plan': row['plan'] or 'basic', 'status': row['status']})
+    return jsonify({'email': user['email'], 'plan': user['plan'] or 'basic', 'status': user['status']})
 
 
 @app.route('/api/change-password', methods=['POST'])
 def api_change_password():
-    user_id = session.get('cca_user_id')
-    if not user_id:
+    user = get_current_user()
+    if not user:
         return jsonify({'error': 'Not logged in.'}), 401
 
     data         = request.json or {}
@@ -961,7 +911,7 @@ def api_change_password():
         return jsonify({'error': 'New password must be at least 8 characters.'}), 400
 
     conn = get_db()
-    row  = conn.execute('SELECT password_hash FROM subscriptions WHERE id=?', (user_id,)).fetchone()
+    row  = conn.execute('SELECT password_hash FROM subscriptions WHERE id=?', (user['id'],)).fetchone()
 
     if not row or not check_password_hash(row['password_hash'], current_pass):
         conn.close()
@@ -969,7 +919,7 @@ def api_change_password():
 
     conn.execute(
         'UPDATE subscriptions SET password_hash=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
-        (generate_password_hash(new_pass), user_id)
+        (generate_password_hash(new_pass), user['id'])
     )
     conn.commit()
     conn.close()
@@ -978,13 +928,13 @@ def api_change_password():
 
 @app.route('/api/cancel-subscription', methods=['POST'])
 def api_cancel_subscription():
-    user_id = session.get('cca_user_id')
-    if not user_id:
+    user = get_current_user()
+    if not user:
         return jsonify({'error': 'Not logged in.'}), 401
 
     conn = get_db()
     row  = conn.execute(
-        'SELECT stripe_subscription_id FROM subscriptions WHERE id=?', (user_id,)
+        'SELECT stripe_subscription_id FROM subscriptions WHERE id=?', (user['id'],)
     ).fetchone()
     conn.close()
 
@@ -999,71 +949,72 @@ def api_cancel_subscription():
     conn = get_db()
     conn.execute(
         "UPDATE subscriptions SET status='canceled', updated_at=CURRENT_TIMESTAMP WHERE id=?",
-        (user_id,)
+        (user['id'],)
     )
     conn.commit()
     conn.close()
 
-    session.clear()
-    return jsonify({'success': True})
+    resp = make_response(jsonify({'success': True}))
+    resp.delete_cookie('cca_token')
+    return resp
 
 
 # ─── Main App ──────────────────────────────────
 
-def _restore_session_from_token(token):
-    """Look up token in DB and populate Flask session. Returns the row or None."""
+def get_current_user(url_token=None):
+    """Identify the user from url_token param, then cca_token cookie. Returns DB row or None."""
+    token = url_token or request.cookies.get('cca_token', '')
     if not token:
         return None
     conn = get_db()
     row  = conn.execute(
-        'SELECT id, plan, email, status FROM subscriptions WHERE token=?', (token,)
+        'SELECT id, token, plan, email, status FROM subscriptions WHERE token=?', (token,)
     ).fetchone()
     conn.close()
     if row and row['status'] in ('active', 'trialing'):
-        session['cca_user_id'] = row['id']
-        session['cca_plan']    = row['plan'] or 'basic'
-        session['cca_email']   = (row['email'] or '').lower()
-        session['cca_token']   = token
-        session.pop('cca_demo', None)
         return row
     return None
 
 
+def _auth_cookie(resp, token):
+    """Attach a 30-day cca_token cookie to a response."""
+    resp.set_cookie('cca_token', token, max_age=60*60*24*30, httponly=True, samesite='Lax')
+    return resp
+
+
 @app.route('/setup')
 def setup():
-    """Landing page for brand-new subscribers. Restores session from token URL param."""
-    token = request.args.get('token', '')
-    _restore_session_from_token(token)
+    """Landing page for brand-new subscribers. Auth via URL token → cookie."""
+    url_token = request.args.get('token', '')
+    user      = get_current_user(url_token=url_token)
 
-    plan       = session.get('cca_plan', 'basic')
-    logged_in  = bool(session.get('cca_user_id'))
-    user_email = session.get('cca_email', '')
+    plan       = user['plan'] or 'basic' if user else 'basic'
+    logged_in  = bool(user)
+    user_email = (user['email'] or '').lower() if user else ''
+
     resp = make_response(render_template('index.html', plan=plan, logged_in=logged_in, user_email=user_email))
-    if token:
-        resp.set_cookie('cca_token', token, max_age=60*60*24*30, httponly=True, samesite='Lax')
+    if user:
+        _auth_cookie(resp, user['token'])
     return resp
 
 
 @app.route('/')
 def index():
-    token   = request.args.get('token', '')
-    is_demo = request.args.get('demo') == '1'
+    url_token = request.args.get('token', '')
+    is_demo   = request.args.get('demo') == '1'
 
     if is_demo:
-        session['cca_plan'] = 'investor'
-        session['cca_demo'] = True
-    elif token or not session.get('cca_user_id'):
-        # Restore from URL token, then fall back to cookie token
-        active_token = token or request.cookies.get('cca_token', '')
-        _restore_session_from_token(active_token)
+        resp = make_response(render_template('index.html', plan='investor', logged_in=False, user_email=''))
+        return resp
 
-    plan       = session.get('cca_plan', 'basic')
-    logged_in  = bool(session.get('cca_user_id'))
-    user_email = session.get('cca_email', '')
+    user       = get_current_user(url_token=url_token)
+    plan       = user['plan'] or 'basic' if user else 'basic'
+    logged_in  = bool(user)
+    user_email = (user['email'] or '').lower() if user else ''
+
     resp = make_response(render_template('index.html', plan=plan, logged_in=logged_in, user_email=user_email))
-    active_token = token or request.cookies.get('cca_token', '')
-    if active_token and logged_in:
-        resp.set_cookie('cca_token', active_token, max_age=60*60*24*30, httponly=True, samesite='Lax')
+    if user:
+        _auth_cookie(resp, user['token'])
     return resp
 
 
