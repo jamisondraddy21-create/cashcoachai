@@ -57,7 +57,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Belt-and-suspenders: remove investor elements if window.CCA_PLAN isn't investor
   applyPlanGating();
 
+  // Load from localStorage first, then overlay with server data if logged in
   loadState();
+  if (window.CCA_LOGGED_IN) {
+    await loadDataFromServer();
+  }
 
   // Set default date
   document.getElementById('expenseDate').value = new Date().toISOString().split('T')[0];
@@ -373,11 +377,43 @@ function closeDemoBanner() {
 // ─── Persistence ──────────────────────
 function saveState() {
   try { localStorage.setItem('cca_v1', JSON.stringify(state)); } catch (_) {}
+  if (window.CCA_LOGGED_IN) saveDataToServer();
 }
 function loadState() {
   try {
     const s = localStorage.getItem('cca_v1');
     if (s) state = { ...state, ...JSON.parse(s) };
+  } catch (_) {}
+}
+
+async function saveDataToServer() {
+  if (!window.CCA_LOGGED_IN) return;
+  try {
+    await fetch('/api/save-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        income:      state.income,
+        bills:       state.bills,
+        habits:      state.habits,
+        budget_plan: state.budgetPlan,
+      }),
+    });
+  } catch (_) {}
+}
+
+async function loadDataFromServer() {
+  try {
+    const res  = await fetch('/api/load-data');
+    const data = await res.json();
+    if (data.data) {
+      // Server data overrides localStorage — source of truth for logged-in users
+      state.income     = data.data.income     || state.income;
+      state.bills      = data.data.bills?.length  ? data.data.bills  : state.bills;
+      state.habits     = data.data.habits?.length ? data.data.habits : state.habits;
+      state.budgetPlan = data.data.budget_plan || state.budgetPlan;
+      saveState();  // sync back to localStorage
+    }
   } catch (_) {}
 }
 
@@ -415,7 +451,7 @@ function showView(name) {
   document.getElementById('view-' + name).classList.add('active');
 }
 function navigate(name) {
-  const noAuthRequired = ['setup', 'contact'];
+  const noAuthRequired = ['setup', 'contact', 'account'];
   if (!state.budgetPlan && !noAuthRequired.includes(name)) { showToast('Please complete setup first', 'error'); return; }
   if (name === 'investor' && !document.getElementById('view-investor')) {
     showToast('The Investor Hub requires the Investor plan ($39.99/mo)', 'error');
@@ -1474,6 +1510,96 @@ async function submitContact() {
 
   btn.disabled    = false;
   btn.textContent = 'Send Message';
+}
+
+// ─── Account Settings ──────────────────
+
+async function changePassword() {
+  const current  = document.getElementById('currentPassword').value;
+  const newPw    = document.getElementById('newPassword').value;
+  const confirm  = document.getElementById('confirmPassword').value;
+  const statusEl = document.getElementById('passwordStatus');
+  const btn      = document.getElementById('changePasswordBtn');
+
+  statusEl.style.color = 'var(--text-2)';
+  statusEl.textContent = '';
+
+  if (!current || !newPw || !confirm) {
+    statusEl.style.color = '#dc2626';
+    statusEl.textContent = 'All fields are required.';
+    return;
+  }
+  if (newPw.length < 8) {
+    statusEl.style.color = '#dc2626';
+    statusEl.textContent = 'New password must be at least 8 characters.';
+    return;
+  }
+  if (newPw !== confirm) {
+    statusEl.style.color = '#dc2626';
+    statusEl.textContent = 'New passwords do not match.';
+    return;
+  }
+
+  btn.disabled    = true;
+  btn.textContent = 'Updating…';
+
+  try {
+    const res  = await fetch('/api/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ current_password: current, new_password: newPw }),
+    });
+    const data = await res.json();
+
+    if (data.error) {
+      statusEl.style.color = '#dc2626';
+      statusEl.textContent = data.error;
+    } else {
+      statusEl.style.color = 'var(--green)';
+      statusEl.textContent = '✓ Password updated successfully.';
+      document.getElementById('currentPassword').value = '';
+      document.getElementById('newPassword').value     = '';
+      document.getElementById('confirmPassword').value = '';
+    }
+  } catch (_) {
+    statusEl.style.color = '#dc2626';
+    statusEl.textContent = 'Something went wrong. Please try again.';
+  }
+
+  btn.disabled    = false;
+  btn.textContent = 'Update Password';
+}
+
+async function cancelSubscription() {
+  if (!confirm('Are you sure you want to cancel your subscription? You will lose access at the end of the current billing period.')) return;
+
+  const btn      = document.getElementById('cancelBtn');
+  const statusEl = document.getElementById('cancelStatus');
+
+  btn.disabled    = true;
+  btn.textContent = 'Canceling…';
+  statusEl.textContent = '';
+
+  try {
+    const res  = await fetch('/api/cancel-subscription', { method: 'POST' });
+    const data = await res.json();
+
+    if (data.error) {
+      statusEl.style.color = '#dc2626';
+      statusEl.textContent = data.error;
+      btn.disabled    = false;
+      btn.textContent = 'Cancel Subscription';
+    } else {
+      statusEl.style.color = 'var(--text-2)';
+      statusEl.textContent = 'Subscription canceled. Redirecting…';
+      setTimeout(() => { window.location.href = '/subscribe'; }, 2000);
+    }
+  } catch (_) {
+    statusEl.style.color = '#dc2626';
+    statusEl.textContent = 'Something went wrong. Please try again.';
+    btn.disabled    = false;
+    btn.textContent = 'Cancel Subscription';
+  }
 }
 
 // ─── Utilities ─────────────────────────

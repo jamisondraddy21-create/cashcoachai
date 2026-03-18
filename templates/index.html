@@ -10,7 +10,11 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
 </head>
 <body>
-<script>window.CCA_PLAN = '{{ plan }}';</script>
+<script>
+  window.CCA_PLAN      = '{{ plan }}';
+  window.CCA_LOGGED_IN = {{ 'true' if logged_in else 'false' }};
+  window.CCA_EMAIL     = '{{ user_email }}';
+</script>
 
 <!-- ═══ NAVBAR ═══ -->
 <nav class="navbar">
@@ -26,6 +30,9 @@
     <button class="nav-tab" data-view="investor"  onclick="navigate('investor')" id="investorNavTab">👑 Investor</button>
     {% endif %}
     <button class="nav-tab" data-view="contact"   onclick="navigate('contact')">✉️ Contact</button>
+    {% if logged_in %}
+    <button class="nav-tab" data-view="account"   onclick="navigate('account')" id="accountNavTab">⚙️ Account</button>
+    {% endif %}
   </div>
   <button class="btn-reset" onclick="resetApp()" title="Start over">↺ Reset</button>
 </nav>
@@ -492,6 +499,77 @@
         <div id="contactStatus" class="contact-status"></div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ═══ ACCOUNT ═══ -->
+<div class="view" id="view-account">
+  <div class="main-container" style="max-width:640px">
+    <div class="page-header">
+      <h2>⚙️ Account Settings</h2>
+      <p>Manage your plan, password, and subscription.</p>
+    </div>
+
+    <!-- Plan Info -->
+    <div class="card">
+      <div class="card-header"><h3>Your Plan</h3></div>
+      <div class="acct-rows">
+        <div class="acct-row">
+          <span class="acct-label">Email</span>
+          <span class="acct-value" id="acctEmail">{{ user_email }}</span>
+        </div>
+        <div class="acct-row">
+          <span class="acct-label">Plan</span>
+          <span class="acct-value"><span class="acct-plan-badge" id="acctPlan">{{ plan | capitalize }}</span></span>
+        </div>
+        <div class="acct-row">
+          <span class="acct-label">Status</span>
+          <span class="acct-value" id="acctStatus">Active</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Change Password -->
+    <div class="card">
+      <div class="card-header"><h3>Change Password</h3></div>
+      <div class="contact-form">
+        <div class="contact-field">
+          <label class="contact-label">Current Password</label>
+          <input type="password" id="currentPassword" class="input-field" placeholder="••••••••" />
+        </div>
+        <div class="contact-field">
+          <label class="contact-label">New Password</label>
+          <input type="password" id="newPassword" class="input-field" placeholder="At least 8 characters" />
+        </div>
+        <div class="contact-field">
+          <label class="contact-label">Confirm New Password</label>
+          <input type="password" id="confirmPassword" class="input-field" placeholder="••••••••" />
+        </div>
+        <div id="passwordStatus" style="font-size:13px;min-height:18px"></div>
+        <button class="btn-primary" onclick="changePassword()" id="changePasswordBtn" style="margin-top:4px">
+          Update Password
+        </button>
+      </div>
+    </div>
+
+    <!-- Cancel Subscription -->
+    <div class="card">
+      <div class="card-header"><h3>Subscription</h3></div>
+      <div style="padding:16px 20px 20px">
+        <p style="font-size:14px;color:var(--text-2);margin-bottom:16px">
+          Canceling will end your access at the end of your current billing period. This cannot be undone.
+        </p>
+        <div id="cancelStatus" style="font-size:13px;margin-bottom:10px;min-height:18px"></div>
+        <button class="btn-danger" onclick="cancelSubscription()" id="cancelBtn">
+          Cancel Subscription
+        </button>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:4px;padding-bottom:32px">
+      <a href="/logout" class="sub-link" style="font-size:14px;color:var(--text-2)">Log out of your account</a>
+    </div>
+
   </div>
 </div>
 

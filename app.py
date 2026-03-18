@@ -1,6 +1,7 @@
 """CashCoachAI — Flask backend"""
 
 from flask import Flask, render_template, request, jsonify, Response, stream_with_context, redirect, session
+from werkzeug.security import generate_password_hash, check_password_hash
 import anthropic
 import json
 import re
@@ -63,13 +64,26 @@ def init_db():
             key   TEXT PRIMARY KEY,
             value TEXT
         );
+        CREATE TABLE IF NOT EXISTS user_data (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            subscription_id INTEGER NOT NULL UNIQUE,
+            income          REAL    DEFAULT 0,
+            bills           TEXT    DEFAULT '[]',
+            habits          TEXT    DEFAULT '[]',
+            budget_plan     TEXT,
+            updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
     ''')
-    # Add plan column to existing DBs that pre-date this migration
-    try:
-        conn.execute("ALTER TABLE subscriptions ADD COLUMN plan TEXT DEFAULT 'basic'")
-        conn.commit()
-    except Exception:
-        pass  # Column already exists
+    # Migrations for older DB schemas
+    for migration in [
+        "ALTER TABLE subscriptions ADD COLUMN plan TEXT DEFAULT 'basic'",
+        "ALTER TABLE subscriptions ADD COLUMN password_hash TEXT",
+    ]:
+        try:
+            conn.execute(migration)
+            conn.commit()
+        except Exception:
+            pass  # Column already exists
     conn.close()
 
 
@@ -377,7 +391,7 @@ def subscribe_success():
         if not existing and email:
             send_welcome_email(email, plan)
 
-        return redirect(f'/?token={token}')
+        return redirect(f'/setup-password?token={token}')
     except Exception:
         return redirect('/subscribe?error=1')
 
@@ -676,6 +690,254 @@ def contact():
         return jsonify({'error': 'Failed to send message. Please try again.'}), 500
 
 
+# ─── Auth Routes ───────────────────────────────
+
+@app.route('/login')
+def login_page():
+    if session.get('cca_user_id'):
+        return redirect('/')
+    returning = request.args.get('returning') == '1'
+    return render_template('login.html', returning=returning)
+
+
+@app.route('/api/login', methods=['POST'])
+def api_login():
+    data     = request.json or {}
+    email    = data.get('email', '').strip().lower()
+    password = data.get('password', '')
+
+    if not email or not password:
+        return jsonify({'error': 'Email and password are required.'}), 400
+
+    conn = get_db()
+    row  = conn.execute(
+        '''SELECT id, token, plan, status, password_hash
+           FROM subscriptions
+           WHERE lower(email)=? AND password_hash IS NOT NULL''',
+        (email,)
+    ).fetchone()
+    conn.close()
+
+    if not row or not check_password_hash(row['password_hash'], password):
+        return jsonify({'error': 'Invalid email or password.'}), 401
+
+    if row['status'] not in ('active', 'trialing'):
+        return jsonify({'error': 'Your subscription is not active. Please resubscribe to continue.'}), 403
+
+    session['cca_user_id'] = row['id']
+    session['cca_plan']    = row['plan'] or 'basic'
+    session['cca_email']   = email
+    session['cca_token']   = row['token']
+    return jsonify({'success': True, 'plan': row['plan'] or 'basic'})
+
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect('/subscribe')
+
+
+@app.route('/setup-password')
+def setup_password_page():
+    token = request.args.get('token', '')
+    if not token:
+        return redirect('/subscribe')
+
+    conn = get_db()
+    row  = conn.execute(
+        'SELECT id, email, password_hash, plan, status FROM subscriptions WHERE token=?', (token,)
+    ).fetchone()
+    conn.close()
+
+    if not row:
+        return redirect('/subscribe')
+
+    # Already has a password — returning subscriber, send to login
+    if row['password_hash']:
+        return redirect('/login?returning=1')
+
+    return render_template('setup_password.html', token=token, email=row['email'] or '')
+
+
+@app.route('/api/set-password', methods=['POST'])
+def api_set_password():
+    data     = request.json or {}
+    token    = data.get('token', '')
+    password = data.get('password', '')
+
+    if not token or not password:
+        return jsonify({'error': 'Missing token or password.'}), 400
+
+    if len(password) < 8:
+        return jsonify({'error': 'Password must be at least 8 characters.'}), 400
+
+    conn = get_db()
+    row  = conn.execute(
+        'SELECT id, email, plan, status FROM subscriptions WHERE token=?', (token,)
+    ).fetchone()
+
+    if not row:
+        conn.close()
+        return jsonify({'error': 'Invalid token.'}), 404
+
+    conn.execute(
+        'UPDATE subscriptions SET password_hash=?, updated_at=CURRENT_TIMESTAMP WHERE token=?',
+        (generate_password_hash(password), token)
+    )
+    conn.commit()
+    conn.close()
+
+    session['cca_user_id'] = row['id']
+    session['cca_plan']    = row['plan'] or 'basic'
+    session['cca_email']   = (row['email'] or '').lower()
+    session['cca_token']   = token
+    return jsonify({'success': True, 'plan': row['plan'] or 'basic'})
+
+
+# ─── User Data Routes ───────────────────────────
+
+@app.route('/api/save-data', methods=['POST'])
+def save_data():
+    data    = request.json or {}
+    user_id = session.get('cca_user_id')
+
+    # Fallback: accept token for the first save right after password setup
+    if not user_id:
+        token = data.get('token', '')
+        if token:
+            conn = get_db()
+            row  = conn.execute('SELECT id FROM subscriptions WHERE token=?', (token,)).fetchone()
+            conn.close()
+            if row:
+                user_id = row['id']
+
+    if not user_id:
+        return jsonify({'error': 'Not authenticated.'}), 401
+
+    income      = float(data.get('income', 0))
+    bills       = json.dumps(data.get('bills', []))
+    habits      = json.dumps(data.get('habits', []))
+    budget_plan = json.dumps(data.get('budget_plan')) if data.get('budget_plan') else None
+
+    conn = get_db()
+    conn.execute(
+        '''INSERT INTO user_data (subscription_id, income, bills, habits, budget_plan)
+           VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT(subscription_id) DO UPDATE SET
+               income=excluded.income, bills=excluded.bills, habits=excluded.habits,
+               budget_plan=excluded.budget_plan, updated_at=CURRENT_TIMESTAMP''',
+        (user_id, income, bills, habits, budget_plan)
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+
+@app.route('/api/load-data')
+def load_data():
+    user_id = session.get('cca_user_id')
+    if not user_id:
+        return jsonify({'data': None})
+
+    conn = get_db()
+    row  = conn.execute(
+        'SELECT * FROM user_data WHERE subscription_id=?', (user_id,)
+    ).fetchone()
+    conn.close()
+
+    if not row:
+        return jsonify({'data': None})
+
+    return jsonify({'data': {
+        'income':      row['income'] or 0,
+        'bills':       json.loads(row['bills']  or '[]'),
+        'habits':      json.loads(row['habits'] or '[]'),
+        'budget_plan': json.loads(row['budget_plan']) if row['budget_plan'] else None,
+    }})
+
+
+@app.route('/api/account')
+def account_info():
+    user_id = session.get('cca_user_id')
+    if not user_id:
+        return jsonify({'error': 'Not logged in.'}), 401
+
+    conn = get_db()
+    row  = conn.execute(
+        'SELECT email, plan, status FROM subscriptions WHERE id=?', (user_id,)
+    ).fetchone()
+    conn.close()
+
+    if not row:
+        return jsonify({'error': 'Account not found.'}), 404
+
+    return jsonify({'email': row['email'], 'plan': row['plan'] or 'basic', 'status': row['status']})
+
+
+@app.route('/api/change-password', methods=['POST'])
+def api_change_password():
+    user_id = session.get('cca_user_id')
+    if not user_id:
+        return jsonify({'error': 'Not logged in.'}), 401
+
+    data         = request.json or {}
+    current_pass = data.get('current_password', '')
+    new_pass     = data.get('new_password', '')
+
+    if not current_pass or not new_pass:
+        return jsonify({'error': 'Both passwords are required.'}), 400
+
+    if len(new_pass) < 8:
+        return jsonify({'error': 'New password must be at least 8 characters.'}), 400
+
+    conn = get_db()
+    row  = conn.execute('SELECT password_hash FROM subscriptions WHERE id=?', (user_id,)).fetchone()
+
+    if not row or not check_password_hash(row['password_hash'], current_pass):
+        conn.close()
+        return jsonify({'error': 'Current password is incorrect.'}), 401
+
+    conn.execute(
+        'UPDATE subscriptions SET password_hash=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
+        (generate_password_hash(new_pass), user_id)
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+
+@app.route('/api/cancel-subscription', methods=['POST'])
+def api_cancel_subscription():
+    user_id = session.get('cca_user_id')
+    if not user_id:
+        return jsonify({'error': 'Not logged in.'}), 401
+
+    conn = get_db()
+    row  = conn.execute(
+        'SELECT stripe_subscription_id FROM subscriptions WHERE id=?', (user_id,)
+    ).fetchone()
+    conn.close()
+
+    if not row or not row['stripe_subscription_id']:
+        return jsonify({'error': 'No active subscription found.'}), 404
+
+    try:
+        stripe.Subscription.cancel(row['stripe_subscription_id'])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    conn = get_db()
+    conn.execute(
+        "UPDATE subscriptions SET status='canceled', updated_at=CURRENT_TIMESTAMP WHERE id=?",
+        (user_id,)
+    )
+    conn.commit()
+    conn.close()
+
+    session.clear()
+    return jsonify({'success': True})
+
+
 # ─── Main App ──────────────────────────────────
 
 @app.route('/')
@@ -689,15 +951,21 @@ def index():
     elif token:
         conn = get_db()
         row  = conn.execute(
-            'SELECT plan, status FROM subscriptions WHERE token=?', (token,)
+            'SELECT id, plan, status FROM subscriptions WHERE token=?', (token,)
         ).fetchone()
         conn.close()
-        plan = (row['plan'] or 'basic') if row and row['status'] in ('active', 'trialing') else 'basic'
-        session['cca_plan'] = plan
-        session.pop('cca_demo', None)
+        if row and row['status'] in ('active', 'trialing'):
+            plan = row['plan'] or 'basic'
+            session['cca_plan'] = plan
+            # Link token to session user if not already
+            if row['id'] and not session.get('cca_user_id'):
+                session['cca_user_id'] = row['id']
+            session.pop('cca_demo', None)
 
-    plan = session.get('cca_plan', 'basic')
-    return render_template('index.html', plan=plan)
+    plan       = session.get('cca_plan', 'basic')
+    logged_in  = bool(session.get('cca_user_id'))
+    user_email = session.get('cca_email', '')
+    return render_template('index.html', plan=plan, logged_in=logged_in, user_email=user_email)
 
 
 @app.route('/api/generate-plan', methods=['POST'])

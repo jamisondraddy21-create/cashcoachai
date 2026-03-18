@@ -791,6 +791,17 @@ select.input-field { cursor: pointer; }
   .tax-layout { grid-template-columns: 1fr; }
 }
 
+/* ─── Account Settings ───────────────── */
+.acct-rows       { display: flex; flex-direction: column; padding: 4px 20px 16px; }
+.acct-row        { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.acct-row:last-child { border-bottom: none; }
+.acct-label      { font-size: 13px; font-weight: 600; color: var(--text-2); }
+.acct-value      { font-size: 14px; color: var(--text); font-weight: 500; }
+.acct-plan-badge { background: rgba(5,150,105,.12); color: var(--green); font-size: 13px; font-weight: 700; padding: 3px 12px; border-radius: 20px; }
+.btn-danger      { background: transparent; border: 1.5px solid #dc2626; color: #dc2626; padding: 10px 20px; border-radius: var(--r); font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; transition: background .15s, color .15s; }
+.btn-danger:hover { background: #dc2626; color: #fff; }
+.btn-danger:disabled { opacity: .5; cursor: not-allowed; }
+
 /* ─── Investor Hub spacing overrides ─── */
 #view-investor .main-container { padding: 20px 24px; gap: 16px; }
 #view-investor .page-header    { padding: 0; margin-bottom: -4px; }

@@ -140,16 +140,32 @@
     @media (max-width: 640px) {
       .compare-grid { grid-template-columns: 1fr; }
     }
+    .sub-login-btn {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #64748b;
+      text-decoration: none;
+      padding: 8px 14px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #fff;
+      white-space: nowrap;
+      transition: color .15s, border-color .15s;
+    }
+    .sub-login-btn:hover { color: #0f172a; border-color: #94a3b8; }
   </style>
 </head>
 <body class="sub-body">
 
 <div class="sub-page sub-page-3col">
 
-  <!-- Brand -->
-  <div class="sub-brand">
-    <span class="sub-logo">💰</span>
-    <span class="sub-title">CashCoach<span class="accent">AI</span></span>
+  <!-- Top bar -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+    <div class="sub-brand" style="margin-bottom:0">
+      <span class="sub-logo">💰</span>
+      <span class="sub-title">CashCoach<span class="accent">AI</span></span>
+    </div>
+    <a href="/login" class="sub-login-btn">Already a member? Log in →</a>
   </div>
 
   <!-- Header -->
