@@ -42,11 +42,17 @@ let investChatHistory = [];
 
 // ─── Init ──────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-  // Handle subscription token from Stripe redirect (?token=...)
+  // Handle subscription token from Stripe/admin redirect (?token=...&plan=...)
   const params   = new URLSearchParams(window.location.search);
   const urlToken = params.get('token');
+  const urlPlan  = params.get('plan');
   if (urlToken) {
     localStorage.setItem('cca_sub_token', urlToken);
+    // Set plan immediately from URL so gating logic has the correct value
+    // before the API call completes. checkSubscription() will confirm/overwrite it.
+    if (urlPlan && ['basic', 'pro', 'investor'].includes(urlPlan)) {
+      localStorage.setItem('cca_plan', urlPlan);
+    }
     window.history.replaceState({}, document.title, '/');
   }
 

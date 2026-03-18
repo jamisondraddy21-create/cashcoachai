@@ -178,7 +178,7 @@ def admin():
                     )
                 conn.commit()
                 conn.close()
-                return redirect(f'/?token={token}')
+                return redirect(f'/?token={token}&plan={plan}')
             else:
                 # Password correct but no plan chosen yet — show plan selector
                 show_plans = True
