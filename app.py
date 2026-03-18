@@ -348,6 +348,7 @@ def create_checkout_session():
 @app.route('/subscribe/success')
 def subscribe_success():
     session_id = request.args.get('session_id', '')
+    print(f'[DEBUG /subscribe/success] session_id={session_id!r}', flush=True)
     if not session_id:
         return redirect('/subscribe')
 
@@ -356,14 +357,17 @@ def subscribe_success():
 
     try:
         checkout = stripe.checkout.Session.retrieve(session_id)
+        print(f'[DEBUG /subscribe/success] checkout retrieved OK, customer={checkout.customer}', flush=True)
         customer_id     = checkout.customer
         subscription_id = checkout.subscription
         email = (checkout.customer_details.email
                  if checkout.customer_details else None)
+        print(f'[DEBUG /subscribe/success] email={email!r}', flush=True)
 
         sub    = stripe.Subscription.retrieve(subscription_id)
         status = sub.status   # 'trialing', 'active', etc.
         plan   = checkout.metadata.get('plan', 'basic') if checkout.metadata else 'basic'
+        print(f'[DEBUG /subscribe/success] status={status!r} plan={plan!r}', flush=True)
 
         conn     = get_db()
         existing = conn.execute(
@@ -390,6 +394,7 @@ def subscribe_success():
             )
         conn.commit()
         conn.close()
+        print(f'[DEBUG /subscribe/success] is_new={is_new} token={token!r}', flush=True)
 
         if is_new and email:
             send_welcome_email(email, plan)
@@ -403,16 +408,30 @@ def subscribe_success():
             session['cca_plan']    = plan
             session['cca_email']   = (email or '').lower()
             session['cca_token']   = token
+            print(f'[DEBUG /subscribe/success] session set: user_id={row2["id"]} plan={plan!r}', flush=True)
+        else:
+            print(f'[DEBUG /subscribe/success] WARNING: token lookup returned no row', flush=True)
 
-    except Exception:
+    except Exception as e:
+        print(f'[DEBUG /subscribe/success] EXCEPTION: {e}', flush=True)
         # On any failure, still send the user into the app if we have a token
         if token:
             return redirect(f'/?token={token}')
         return redirect('/subscribe?error=1')
 
     if is_new:
+        print(f'[DEBUG /subscribe/success] redirecting new user to /setup?token={token}', flush=True)
         return redirect(f'/setup?token={token}')
+    print(f'[DEBUG /subscribe/success] redirecting returning user to /?token={token}', flush=True)
     return redirect(f'/?token={token}')
+
+
+@app.route('/debug/session')
+def debug_session():
+    return jsonify({
+        'session': {k: v for k, v in session.items()},
+        'cca_token_cookie': request.cookies.get('cca_token', None),
+    })
 
 
 @app.route('/api/check-subscription')
