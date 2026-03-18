@@ -54,6 +54,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const allowed = await checkSubscription();
   if (!allowed) return;   // redirected to /subscribe
 
+  // Remove investor-only DOM elements entirely for non-investor plans
+  applyPlanGating();
+
   loadState();
 
   // Set default date
@@ -105,6 +108,19 @@ async function checkSubscription() {
       localStorage.setItem('cca_plan', 'basic');
     }
     return true;
+  }
+}
+
+// ─── Plan Gating ───────────────────────
+function applyPlanGating() {
+  const plan = localStorage.getItem('cca_plan') || 'basic';
+  if (plan !== 'investor') {
+    // Completely remove investor nav tab from DOM
+    const investorTab = document.getElementById('investorNavTab');
+    if (investorTab) investorTab.remove();
+    // Completely remove investor hub view from DOM
+    const investorView = document.getElementById('view-investor');
+    if (investorView) investorView.remove();
   }
 }
 
@@ -400,8 +416,8 @@ function showView(name) {
 function navigate(name) {
   const noAuthRequired = ['setup', 'contact'];
   if (!state.budgetPlan && !noAuthRequired.includes(name)) { showToast('Please complete setup first', 'error'); return; }
-  if (name === 'investor' && (localStorage.getItem('cca_plan') || 'basic') !== 'investor') {
-    showToast('The Investor tab requires the Investor plan ($39.99/mo)', 'error');
+  if (name === 'investor' && !document.getElementById('view-investor')) {
+    showToast('The Investor Hub requires the Investor plan ($39.99/mo)', 'error');
     return;
   }
   showView(name);
@@ -414,10 +430,10 @@ function showNavTabs() {
   el.style.visibility = 'visible';
   el.style.display = 'flex';
 
-  // Show Investor tab for investor plan subscribers (and demo/dev mode)
-  const plan        = localStorage.getItem('cca_plan') || 'basic';
+  // Investor tab is already removed from DOM for non-investor plans by applyPlanGating().
+  // For investor plan users, make sure it's visible.
   const investorTab = document.getElementById('investorNavTab');
-  if (investorTab) investorTab.style.display = plan === 'investor' ? '' : 'none';
+  if (investorTab) investorTab.style.display = '';
 
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.view === 'dashboard'));
 }
