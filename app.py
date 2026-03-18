@@ -48,32 +48,38 @@ def init_db():
     conn = get_db()
     conn.executescript('''
         CREATE TABLE IF NOT EXISTS subscriptions (
-            id                    INTEGER PRIMARY KEY AUTOINCREMENT,
-            token                 TEXT UNIQUE NOT NULL,
-            stripe_customer_id    TEXT,
+            id                     INTEGER PRIMARY KEY AUTOINCREMENT,
+            token                  TEXT UNIQUE NOT NULL,
+            stripe_customer_id     TEXT,
             stripe_subscription_id TEXT,
-            email                 TEXT,
-            status                TEXT DEFAULT 'pending',
-            created_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            email                  TEXT,
+            status                 TEXT DEFAULT 'pending',
+            plan                   TEXT DEFAULT 'basic',
+            created_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE IF NOT EXISTS settings (
             key   TEXT PRIMARY KEY,
             value TEXT
         );
     ''')
-    conn.commit()
+    # Add plan column to existing DBs that pre-date this migration
+    try:
+        conn.execute("ALTER TABLE subscriptions ADD COLUMN plan TEXT DEFAULT 'basic'")
+        conn.commit()
+    except Exception:
+        pass  # Column already exists
     conn.close()
 
 
-def get_or_create_price_id():
-    """Return the Stripe price ID for $9.99/month, creating it if needed."""
-    env_id = os.environ.get('STRIPE_PRICE_ID', '')
+def _get_or_create_price(settings_key, env_key, unit_amount, plan_name, plan_description):
+    """Generic helper: return a Stripe price ID, creating the product+price if needed."""
+    env_id = os.environ.get(env_key, '')
     if env_id:
         return env_id
 
     conn = get_db()
-    row = conn.execute("SELECT value FROM settings WHERE key='stripe_price_id'").fetchone()
+    row = conn.execute('SELECT value FROM settings WHERE key=?', (settings_key,)).fetchone()
     conn.close()
     if row:
         return row['value']
@@ -82,24 +88,43 @@ def get_or_create_price_id():
         return None
 
     try:
-        product = stripe.Product.create(
-            name='CashCoachAI Subscription',
-            description='AI-powered personal finance coaching',
-        )
-        price = stripe.Price.create(
+        product = stripe.Product.create(name=plan_name, description=plan_description)
+        price   = stripe.Price.create(
             product=product.id,
-            unit_amount=999,        # $9.99 in cents
+            unit_amount=unit_amount,
             currency='usd',
             recurring={'interval': 'month'},
         )
         conn = get_db()
-        conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('stripe_price_id', ?)",
-                     (price.id,))
+        conn.execute('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+                     (settings_key, price.id))
         conn.commit()
         conn.close()
         return price.id
     except Exception:
         return None
+
+
+def get_or_create_price_id():
+    """Return the Stripe price ID for the $9.99/month Basic plan."""
+    return _get_or_create_price(
+        settings_key='stripe_price_id',
+        env_key='STRIPE_PRICE_ID',
+        unit_amount=999,
+        plan_name='CashCoachAI Basic',
+        plan_description='AI-powered personal finance coaching',
+    )
+
+
+def get_or_create_pro_price_id():
+    """Return the Stripe price ID for the $19.99/month Pro plan."""
+    return _get_or_create_price(
+        settings_key='stripe_pro_price_id',
+        env_key='STRIPE_PRO_PRICE_ID',
+        unit_amount=1999,
+        plan_name='CashCoachAI Pro',
+        plan_description='Unlimited AI advisor, priority support, advanced savings goals & monthly report',
+    )
 
 
 init_db()
@@ -155,7 +180,15 @@ def create_checkout_session():
     if not stripe.api_key:
         return jsonify({'error': 'Stripe not configured. Set STRIPE_SECRET_KEY.'}), 500
 
-    price_id = get_or_create_price_id()
+    data = request.json or {}
+    plan = data.get('plan', 'basic')
+
+    if plan == 'pro':
+        price_id = get_or_create_pro_price_id()
+    else:
+        price_id = get_or_create_price_id()
+        plan = 'basic'
+
     if not price_id:
         return jsonify({'error': 'Could not get Stripe price ID.'}), 500
 
@@ -165,6 +198,7 @@ def create_checkout_session():
             payment_method_types=['card'],
             line_items=[{'price': price_id, 'quantity': 1}],
             subscription_data={'trial_period_days': 7},
+            metadata={'plan': plan},
             success_url=f'{APP_URL}/subscribe/success?session_id={{CHECKOUT_SESSION_ID}}',
             cancel_url=f'{APP_URL}/subscribe',
         )
@@ -195,21 +229,23 @@ def subscribe_success():
             (customer_id,)
         ).fetchone()
 
+        plan = session.metadata.get('plan', 'basic') if session.metadata else 'basic'
+
         if existing:
             token = existing['token']
             conn.execute(
                 '''UPDATE subscriptions
-                   SET stripe_subscription_id=?, email=?, status=?, updated_at=CURRENT_TIMESTAMP
+                   SET stripe_subscription_id=?, email=?, status=?, plan=?, updated_at=CURRENT_TIMESTAMP
                    WHERE stripe_customer_id=?''',
-                (subscription_id, email, status, customer_id)
+                (subscription_id, email, status, plan, customer_id)
             )
         else:
             token = str(uuid.uuid4())
             conn.execute(
                 '''INSERT INTO subscriptions
-                   (token, stripe_customer_id, stripe_subscription_id, email, status)
-                   VALUES (?, ?, ?, ?, ?)''',
-                (token, customer_id, subscription_id, email, status)
+                   (token, stripe_customer_id, stripe_subscription_id, email, status, plan)
+                   VALUES (?, ?, ?, ?, ?, ?)''',
+                (token, customer_id, subscription_id, email, status, plan)
             )
         conn.commit()
         conn.close()
@@ -241,6 +277,7 @@ def check_subscription():
     return jsonify({
         'active': row['status'] in ('active', 'trialing'),
         'status': row['status'],
+        'plan':   row['plan'] if row['plan'] else 'basic',
     })
 
 

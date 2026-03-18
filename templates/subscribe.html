@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CashCoachAI — Start Your Free Trial</title>
+  <title>CashCoachAI — Choose Your Plan</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
 </head>
 <body class="sub-body">
 
-<div class="sub-page">
+<div class="sub-page sub-page-wide">
 
   <!-- Brand -->
   <div class="sub-brand">
@@ -18,70 +18,115 @@
     <span class="sub-title">CashCoach<span class="accent">AI</span></span>
   </div>
 
-  <!-- Card -->
-  <div class="sub-card">
-    <div class="trial-badge">🎉 7-Day Free Trial — No charge until day 8</div>
-
-    <h1 class="sub-headline">Take Control of Your Finances</h1>
-    <p class="sub-tagline">
-      AI-powered budgeting and personal coaching — personalized to your income,
-      bills, and spending habits.
-    </p>
-
-    <div class="sub-price-box">
-      <div class="sub-price-amount">$9.99</div>
-      <div class="sub-price-meta">per month after free trial · Cancel anytime</div>
-    </div>
-
-    <ul class="sub-features">
-      <li><span class="feat-check">✓</span> Personalized AI budget plan</li>
-      <li><span class="feat-check">✓</span> Financial health score (1–100)</li>
-      <li><span class="feat-check">✓</span> Monthly expense tracker</li>
-      <li><span class="feat-check">✓</span> AI financial advisor chat</li>
-      <li><span class="feat-check">✓</span> Savings projections &amp; tips</li>
-    </ul>
-
-    <button class="sub-btn" id="subscribeBtn" onclick="startTrial()">
-      Start Free Trial →
-    </button>
-    <p class="sub-note">No charges for 7 days · $9.99/month after · Cancel anytime</p>
-
-    <div class="sub-divider">or</div>
-
-    <button class="sub-btn-demo" onclick="startDemo()">
-      👀 See a demo first
-    </button>
-    <p class="sub-note">Explore with sample data — no account needed</p>
-
-    <div class="sub-error" id="subError"></div>
+  <!-- Header -->
+  <div class="sub-header">
+    <div class="trial-badge">🎉 7-Day Free Trial on All Plans — No charge until day 8</div>
+    <h1 class="sub-headline">Choose Your Plan</h1>
+    <p class="sub-tagline">Start free, cancel anytime. Pick the plan that fits your goals.</p>
   </div>
 
-  <p class="sub-footer-note">
+  <!-- Plans -->
+  <div class="plans-grid">
+
+    <!-- Basic -->
+    <div class="plan-card">
+      <div class="plan-tier">Basic</div>
+      <div class="plan-price-row">
+        <span class="plan-price">$9.99</span>
+        <span class="plan-period">/month</span>
+      </div>
+      <p class="plan-after">after free trial · cancel anytime</p>
+
+      <ul class="plan-features">
+        <li><span class="feat-check feat-check-gray">✓</span> Personalized AI budget plan</li>
+        <li><span class="feat-check feat-check-gray">✓</span> Financial health score (1–100)</li>
+        <li><span class="feat-check feat-check-gray">✓</span> Monthly expense tracker</li>
+        <li><span class="feat-check feat-check-gray">✓</span> AI advisor (25 messages/month)</li>
+        <li><span class="feat-check feat-check-gray">✓</span> Savings projections &amp; tips</li>
+        <li class="feat-absent">✕ Unlimited AI conversations</li>
+        <li class="feat-absent">✕ Priority support</li>
+        <li class="feat-absent">✕ Advanced savings goals tracker</li>
+        <li class="feat-absent">✕ Monthly financial report</li>
+      </ul>
+
+      <button class="plan-btn plan-btn-basic" id="basicBtn" onclick="startTrial('basic')">
+        Start Free Trial →
+      </button>
+      <p class="plan-note">No charges for 7 days</p>
+    </div>
+
+    <!-- Pro -->
+    <div class="plan-card plan-card-pro">
+      <div class="plan-popular-badge">⭐ Most Popular</div>
+      <div class="plan-tier plan-tier-pro">Pro</div>
+      <div class="plan-price-row">
+        <span class="plan-price plan-price-pro">$19.99</span>
+        <span class="plan-period">/month</span>
+      </div>
+      <p class="plan-after">after free trial · cancel anytime</p>
+
+      <ul class="plan-features">
+        <li><span class="feat-check">✓</span> Everything in Basic</li>
+        <li><span class="feat-check">✓</span> <strong>Unlimited</strong> AI advisor conversations</li>
+        <li><span class="feat-check">✓</span> Priority support</li>
+        <li><span class="feat-check">✓</span> Advanced savings goals tracker</li>
+        <li><span class="feat-check">✓</span> Monthly financial report</li>
+        <li><span class="feat-check">✓</span> Personalized AI budget plan</li>
+        <li><span class="feat-check">✓</span> Financial health score (1–100)</li>
+        <li><span class="feat-check">✓</span> Monthly expense tracker</li>
+        <li><span class="feat-check">✓</span> Savings projections &amp; tips</li>
+      </ul>
+
+      <button class="plan-btn plan-btn-pro" id="proBtn" onclick="startTrial('pro')">
+        Start Pro Trial →
+      </button>
+      <p class="plan-note plan-note-pro">No charges for 7 days</p>
+    </div>
+
+  </div>
+
+  <!-- Error -->
+  <div class="sub-error" id="subError"></div>
+
+  <!-- Demo & footer -->
+  <div class="sub-divider">or</div>
+  <button class="sub-btn-demo" onclick="startDemo()">👀 See a demo first</button>
+  <p class="sub-note" style="text-align:center">Explore with sample data — no account needed</p>
+
+  <p class="sub-footer-note" style="margin-top:12px">
     Already subscribed? <a href="/" class="sub-link">Return to app</a>
   </p>
 
 </div>
 
 <script>
-async function startTrial() {
-  const btn = document.getElementById('subscribeBtn');
-  const err = document.getElementById('subError');
-  btn.disabled = true;
+async function startTrial(plan) {
+  const btnId = plan === 'pro' ? 'proBtn' : 'basicBtn';
+  const btn   = document.getElementById(btnId);
+  const err   = document.getElementById('subError');
+
+  btn.disabled    = true;
   btn.textContent = 'Redirecting to Stripe…';
   err.textContent = '';
+
+  // Disable both buttons to prevent double-click
+  document.getElementById('basicBtn').disabled = true;
+  document.getElementById('proBtn').disabled   = true;
 
   try {
     const res  = await fetch('/api/create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan }),
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     window.location.href = data.url;
   } catch (e) {
     err.textContent = e.message || 'Something went wrong. Please try again.';
-    btn.disabled    = false;
-    btn.textContent = 'Start Free Trial →';
+    document.getElementById('basicBtn').disabled = false;
+    document.getElementById('proBtn').disabled   = false;
+    btn.textContent = plan === 'pro' ? 'Start Pro Trial →' : 'Start Free Trial →';
   }
 }
 
