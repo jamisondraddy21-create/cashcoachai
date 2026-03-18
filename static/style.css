@@ -690,7 +690,7 @@ select.input-field { cursor: pointer; }
 .invest-chat-wrap .chat-input-row { margin: 0 16px 16px; flex-shrink: 0; }
 
 /* Market News */
-.news-list    { padding: 8px 0; max-height: 420px; overflow-y: auto; }
+.news-list    { padding: 8px 0; }
 .news-loading,
 .news-empty   { padding: 24px; text-align: center; color: var(--text-3); font-size: 14px; }
 .news-item {
