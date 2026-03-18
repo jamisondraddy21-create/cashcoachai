@@ -21,6 +21,7 @@
     <button class="nav-tab" data-view="dashboard" onclick="navigate('dashboard')">📊 Dashboard</button>
     <button class="nav-tab" data-view="tracker"   onclick="navigate('tracker')">📝 Tracker</button>
     <button class="nav-tab" data-view="advisor"   onclick="navigate('advisor')">💬 AI Advisor</button>
+    <button class="nav-tab" data-view="investor"  onclick="navigate('investor')" id="investorNavTab" style="display:none">📈 Investor</button>
     <button class="nav-tab" data-view="contact"   onclick="navigate('contact')">✉️ Contact</button>
   </div>
   <button class="btn-reset" onclick="resetApp()" title="Start over">↺ Reset</button>
@@ -297,6 +298,141 @@
         </svg>
       </button>
     </div>
+  </div>
+</div>
+
+<!-- ═══ INVESTOR HUB ═══ -->
+<div class="view" id="view-investor">
+  <div class="main-container">
+    <div class="page-header">
+      <h2>📈 Investor Hub</h2>
+      <p>Market news, education, portfolio tools, and an AI investing coach — all in one place.</p>
+    </div>
+
+    <!-- Market News + Education -->
+    <div class="two-col">
+
+      <!-- Market News -->
+      <div class="card">
+        <div class="card-header">
+          <h3>📰 Market News</h3>
+          <button class="btn-ghost-sm" onclick="fetchMarketNews()">↻ Refresh</button>
+        </div>
+        <div id="marketNewsList" class="news-list">
+          <div class="news-loading">Loading latest news…</div>
+        </div>
+      </div>
+
+      <!-- Investing Education -->
+      <div class="card">
+        <div class="card-header"><h3>🎓 Investing Basics</h3></div>
+        <div id="eduGrid" class="edu-grid"></div>
+      </div>
+
+    </div>
+
+    <!-- Portfolio Tracker -->
+    <div class="card">
+      <div class="card-header">
+        <h3>💼 Portfolio Tracker</h3>
+        <div style="display:flex;gap:10px;align-items:center">
+          <span class="card-sub" id="portfolioTotalLabel"></span>
+          <button class="btn-ghost-sm" onclick="refreshPortfolioPrices()">↻ Refresh Prices</button>
+        </div>
+      </div>
+      <div class="portfolio-form">
+        <input type="text"   id="stockSymbol" class="input-field" placeholder="Ticker (e.g. AAPL)" style="text-transform:uppercase" />
+        <input type="number" id="stockShares" class="input-field" placeholder="Shares" min="0.001" step="0.001" />
+        <div class="input-prefix-wrap">
+          <span>$</span>
+          <input type="number" id="stockBuyPrice" class="input-field bare" placeholder="Avg. buy price" min="0" step="0.01" />
+        </div>
+        <button class="btn-secondary" onclick="addStock()">+ Add</button>
+      </div>
+      <div id="portfolioTable" class="portfolio-table-wrap"></div>
+    </div>
+
+    <!-- Compound Growth Calculator -->
+    <div class="card">
+      <div class="card-header"><h3>🔢 Compound Growth Calculator</h3></div>
+      <div class="calc-layout">
+        <div class="calc-inputs">
+          <div class="calc-field">
+            <label class="calc-label">Initial Investment</label>
+            <div class="input-prefix-wrap"><span>$</span>
+              <input type="number" id="calcInitial" class="input-field bare" value="1000" min="0" oninput="updateCalc()" />
+            </div>
+          </div>
+          <div class="calc-field">
+            <label class="calc-label">Monthly Contribution</label>
+            <div class="input-prefix-wrap"><span>$</span>
+              <input type="number" id="calcMonthly" class="input-field bare" value="200" min="0" oninput="updateCalc()" />
+            </div>
+          </div>
+          <div class="calc-field">
+            <label class="calc-label">Annual Return Rate</label>
+            <div class="input-prefix-wrap"><span>%</span>
+              <input type="number" id="calcRate" class="input-field bare" value="8" min="0" max="50" step="0.1" oninput="updateCalc()" />
+            </div>
+          </div>
+          <div class="calc-field">
+            <label class="calc-label">Time Horizon — <span id="calcYearsLabel">20 yrs</span></label>
+            <input type="range" id="calcYears" class="calc-slider" min="1" max="40" value="20"
+              oninput="document.getElementById('calcYearsLabel').textContent=this.value+' yrs'; updateCalc()" />
+          </div>
+          <div class="calc-results">
+            <div class="calc-result-item">
+              <div class="calc-result-label">Total Value</div>
+              <div class="calc-result-value calc-value-green" id="calcTotal">—</div>
+            </div>
+            <div class="calc-result-item">
+              <div class="calc-result-label">Amount Invested</div>
+              <div class="calc-result-value" id="calcInvested">—</div>
+            </div>
+            <div class="calc-result-item">
+              <div class="calc-result-label">Investment Gains</div>
+              <div class="calc-result-value calc-value-green" id="calcGains">—</div>
+            </div>
+          </div>
+        </div>
+        <div class="calc-chart-wrap">
+          <canvas id="compoundChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Investing Coach -->
+    <div class="card">
+      <div class="card-header"><h3>🤖 AI Investing Coach</h3></div>
+      <div class="invest-chat-wrap">
+        <div class="suggested-prompts" style="padding:16px 20px 0">
+          <button class="prompt-chip" onclick="sendInvestSuggested(this)">Can I afford to invest right now?</button>
+          <button class="prompt-chip" onclick="sendInvestSuggested(this)">What's an index fund?</button>
+          <button class="prompt-chip" onclick="sendInvestSuggested(this)">How do I start a Roth IRA?</button>
+          <button class="prompt-chip" onclick="sendInvestSuggested(this)">Explain dollar-cost averaging</button>
+          <button class="prompt-chip" onclick="sendInvestSuggested(this)">ETFs vs individual stocks?</button>
+        </div>
+        <div class="chat-messages" id="investChatMessages">
+          <div class="chat-msg ai">
+            <div class="msg-avatar">📈</div>
+            <div class="msg-bubble">
+              <p>Hi! I'm your AI Investing Coach. I know your complete financial profile and I'm here to help you understand investing and whether your budget is ready for it. What would you like to learn?</p>
+            </div>
+          </div>
+        </div>
+        <div class="chat-input-row">
+          <textarea id="investChatInput" class="chat-textarea" rows="1"
+            placeholder="Ask about stocks, ETFs, Roth IRA, compound interest…"
+            onkeydown="handleInvestChatKey(event)"></textarea>
+          <button class="btn-send" id="investSendBtn" onclick="sendInvestMessage()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 

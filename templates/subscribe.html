@@ -10,7 +10,7 @@
 </head>
 <body class="sub-body">
 
-<div class="sub-page sub-page-wide">
+<div class="sub-page sub-page-3col">
 
   <!-- Brand -->
   <div class="sub-brand">
@@ -26,61 +26,86 @@
   </div>
 
   <!-- Plans -->
-  <div class="plans-grid">
+  <div class="plans-grid plans-grid-3">
 
     <!-- Basic -->
     <div class="plan-card">
       <div class="plan-tier">Basic</div>
       <div class="plan-price-row">
         <span class="plan-price">$9.99</span>
-        <span class="plan-period">/month</span>
+        <span class="plan-period">/mo</span>
       </div>
       <p class="plan-after">after free trial · cancel anytime</p>
-
       <ul class="plan-features">
         <li><span class="feat-check feat-check-gray">✓</span> Personalized AI budget plan</li>
         <li><span class="feat-check feat-check-gray">✓</span> Financial health score (1–100)</li>
         <li><span class="feat-check feat-check-gray">✓</span> Monthly expense tracker</li>
-        <li><span class="feat-check feat-check-gray">✓</span> AI advisor (25 messages/month)</li>
+        <li><span class="feat-check feat-check-gray">✓</span> AI advisor (25 msg/month)</li>
         <li><span class="feat-check feat-check-gray">✓</span> Savings projections &amp; tips</li>
         <li class="feat-absent">✕ Unlimited AI conversations</li>
         <li class="feat-absent">✕ Priority support</li>
-        <li class="feat-absent">✕ Advanced savings goals tracker</li>
+        <li class="feat-absent">✕ Advanced savings goals</li>
         <li class="feat-absent">✕ Monthly financial report</li>
+        <li class="feat-absent">✕ Investor Hub</li>
       </ul>
-
       <button class="plan-btn plan-btn-basic" id="basicBtn" onclick="startTrial('basic')">
         Start Free Trial →
       </button>
       <p class="plan-note">No charges for 7 days</p>
     </div>
 
-    <!-- Pro -->
+    <!-- Pro — Most Popular -->
     <div class="plan-card plan-card-pro">
       <div class="plan-popular-badge">⭐ Most Popular</div>
       <div class="plan-tier plan-tier-pro">Pro</div>
       <div class="plan-price-row">
         <span class="plan-price plan-price-pro">$19.99</span>
-        <span class="plan-period">/month</span>
+        <span class="plan-period">/mo</span>
       </div>
       <p class="plan-after">after free trial · cancel anytime</p>
-
       <ul class="plan-features">
         <li><span class="feat-check">✓</span> Everything in Basic</li>
         <li><span class="feat-check">✓</span> <strong>Unlimited</strong> AI advisor conversations</li>
         <li><span class="feat-check">✓</span> Priority support</li>
         <li><span class="feat-check">✓</span> Advanced savings goals tracker</li>
         <li><span class="feat-check">✓</span> Monthly financial report</li>
-        <li><span class="feat-check">✓</span> Personalized AI budget plan</li>
-        <li><span class="feat-check">✓</span> Financial health score (1–100)</li>
-        <li><span class="feat-check">✓</span> Monthly expense tracker</li>
-        <li><span class="feat-check">✓</span> Savings projections &amp; tips</li>
+        <li class="feat-absent">✕ Daily market news</li>
+        <li class="feat-absent">✕ Investing education</li>
+        <li class="feat-absent">✕ Portfolio tracker</li>
+        <li class="feat-absent">✕ Compound growth calculator</li>
+        <li class="feat-absent">✕ AI investing coach</li>
       </ul>
-
       <button class="plan-btn plan-btn-pro" id="proBtn" onclick="startTrial('pro')">
         Start Pro Trial →
       </button>
       <p class="plan-note plan-note-pro">No charges for 7 days</p>
+    </div>
+
+    <!-- Investor — Best Value -->
+    <div class="plan-card plan-card-investor">
+      <div class="plan-popular-badge plan-popular-badge-gold">💎 Best Value</div>
+      <div class="plan-tier plan-tier-investor">Investor</div>
+      <div class="plan-price-row">
+        <span class="plan-price plan-price-investor">$39.99</span>
+        <span class="plan-period">/mo</span>
+      </div>
+      <p class="plan-after">after free trial · cancel anytime</p>
+      <ul class="plan-features">
+        <li><span class="feat-check feat-check-gold">✓</span> Everything in Pro</li>
+        <li><span class="feat-check feat-check-gold">✓</span> Daily market news summary</li>
+        <li><span class="feat-check feat-check-gold">✓</span> Investing education library</li>
+        <li><span class="feat-check feat-check-gold">✓</span> Portfolio tracker (stocks &amp; ETFs)</li>
+        <li><span class="feat-check feat-check-gold">✓</span> Compound growth calculator</li>
+        <li><span class="feat-check feat-check-gold">✓</span> AI investing coach chat</li>
+        <li><span class="feat-check feat-check-gold">✓</span> Unlimited AI advisor conversations</li>
+        <li><span class="feat-check feat-check-gold">✓</span> Priority support</li>
+        <li><span class="feat-check feat-check-gold">✓</span> Advanced savings goals tracker</li>
+        <li><span class="feat-check feat-check-gold">✓</span> Monthly financial report</li>
+      </ul>
+      <button class="plan-btn plan-btn-investor" id="investorBtn" onclick="startTrial('investor')">
+        Start Investor Trial →
+      </button>
+      <p class="plan-note plan-note-investor">No charges for 7 days</p>
     </div>
 
   </div>
@@ -100,18 +125,16 @@
 </div>
 
 <script>
+const ALL_BTNS = ['basicBtn', 'proBtn', 'investorBtn'];
+
 async function startTrial(plan) {
-  const btnId = plan === 'pro' ? 'proBtn' : 'basicBtn';
+  const btnId = plan === 'pro' ? 'proBtn' : plan === 'investor' ? 'investorBtn' : 'basicBtn';
   const btn   = document.getElementById(btnId);
   const err   = document.getElementById('subError');
 
-  btn.disabled    = true;
+  ALL_BTNS.forEach(id => { document.getElementById(id).disabled = true; });
   btn.textContent = 'Redirecting to Stripe…';
   err.textContent = '';
-
-  // Disable both buttons to prevent double-click
-  document.getElementById('basicBtn').disabled = true;
-  document.getElementById('proBtn').disabled   = true;
 
   try {
     const res  = await fetch('/api/create-checkout-session', {
@@ -124,9 +147,10 @@ async function startTrial(plan) {
     window.location.href = data.url;
   } catch (e) {
     err.textContent = e.message || 'Something went wrong. Please try again.';
-    document.getElementById('basicBtn').disabled = false;
-    document.getElementById('proBtn').disabled   = false;
-    btn.textContent = plan === 'pro' ? 'Start Pro Trial →' : 'Start Free Trial →';
+    ALL_BTNS.forEach(id => { document.getElementById(id).disabled = false; });
+    document.getElementById('basicBtn').textContent    = 'Start Free Trial →';
+    document.getElementById('proBtn').textContent      = 'Start Pro Trial →';
+    document.getElementById('investorBtn').textContent = 'Start Investor Trial →';
   }
 }
 
@@ -135,7 +159,6 @@ function startDemo() {
   window.location.href = '/';
 }
 
-// Show error if redirected back from Stripe with ?error=1
 if (new URLSearchParams(window.location.search).get('error')) {
   document.getElementById('subError').textContent =
     'Something went wrong with checkout. Please try again.';

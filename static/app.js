@@ -10,6 +10,7 @@ let state = {
   expenses:    [],
   budgetPlan:  null,
   chatHistory: [],
+  portfolio:   [],   // [{symbol, shares, buyPrice, currentPrice, name}]
 };
 
 const DEFAULTS = [
@@ -34,8 +35,10 @@ const EMOJIS = {
 };
 const emoji = cat => EMOJIS[cat] || '📦';
 
-let budgetChart   = null;
-let spendingChart = null;
+let budgetChart       = null;
+let spendingChart     = null;
+let compoundChart     = null;
+let investChatHistory = [];
 
 // ─── Init ──────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
@@ -70,8 +73,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // ─── Subscription Check ────────────────
 async function checkSubscription() {
-  // Demo mode: bypass subscription check, load sample data
+  // Demo mode: show all features including Investor tab
   if (localStorage.getItem('cca_demo') === '1') {
+    localStorage.setItem('cca_plan', 'investor');
     document.getElementById('demoBanner').style.display = 'flex';
     loadDemoProfile('getting-by');
     return true;
@@ -82,12 +86,17 @@ async function checkSubscription() {
     const res   = await fetch(`/api/check-subscription?token=${encodeURIComponent(token)}`);
     const data  = await res.json();
 
-    if (data.dev_mode) return true;
+    if (data.dev_mode) {
+      localStorage.setItem('cca_plan', 'investor');
+      return true;
+    }
 
     if (!data.active) {
       window.location.href = '/subscribe';
       return false;
     }
+
+    localStorage.setItem('cca_plan', data.plan || 'basic');
     return true;
   } catch (_) {
     return true;
@@ -319,6 +328,7 @@ function loadDemoProfile(name) {
 
   // Deep-clone so mutations don't affect the master profile object
   state = JSON.parse(JSON.stringify(profile));
+  if (!state.portfolio) state.portfolio = [];
 
   // Highlight the active tab
   document.querySelectorAll('.demo-tab').forEach(btn => {
@@ -354,7 +364,10 @@ function resetApp() {
   if (!confirm('Reset all data and start over?')) return;
   localStorage.removeItem('cca_v1');
   localStorage.removeItem('cca_demo');
+  localStorage.removeItem('cca_plan');
   document.getElementById('demoBanner').style.display = 'none';
+  investChatHistory = [];
+  if (compoundChart) { compoundChart.destroy(); compoundChart = null; }
   state = { income:0, bills:[], habits:[], expenses:[], budgetPlan:null, chatHistory:[] };
   if (budgetChart)   { budgetChart.destroy();   budgetChart   = null; }
   if (spendingChart) { spendingChart.destroy();  spendingChart = null; }
@@ -384,13 +397,19 @@ function navigate(name) {
   if (!state.budgetPlan && !noAuthRequired.includes(name)) { showToast('Please complete setup first', 'error'); return; }
   showView(name);
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.view === name));
-  if (name === 'tracker') renderTracker();
+  if (name === 'tracker')  renderTracker();
+  if (name === 'investor') renderInvestorHub();
 }
 function showNavTabs() {
   const el = document.getElementById('navTabs');
   el.style.visibility = 'visible';
   el.style.display = 'flex';
-  // activate dashboard tab
+
+  // Show Investor tab for investor plan subscribers (and demo/dev mode)
+  const plan        = localStorage.getItem('cca_plan') || 'basic';
+  const investorTab = document.getElementById('investorNavTab');
+  if (investorTab) investorTab.style.display = plan === 'investor' ? '' : 'none';
+
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.view === 'dashboard'));
 }
 
@@ -813,6 +832,367 @@ function addTyping() {
 }
 function scrollChat() {
   const c = document.getElementById('chatMessages');
+  c.scrollTop = c.scrollHeight;
+}
+
+// ─── Investor Hub ──────────────────────
+
+const EDU_CARDS = [
+  { icon: '🏦', title: 'Emergency Fund First',        body: 'Before investing, build 3–6 months of expenses in a high-yield savings account. This prevents you from selling investments at a loss in a crisis.' },
+  { icon: '📈', title: 'The Power of Compound Interest', body: '$200/month at 8% annual return becomes $298,000 in 30 years — but only $72,000 of that is money you put in. The rest is compounding.' },
+  { icon: '🎯', title: 'Index Funds Explained',       body: 'Index funds like VTI or VTSAX track the entire market. They beat 90% of actively managed funds over 20 years, with near-zero fees.' },
+  { icon: '💡', title: 'Dollar-Cost Averaging',       body: 'Invest the same amount every month regardless of price. You buy more shares when prices are low and fewer when high — reducing average cost over time.' },
+  { icon: '🏛️', title: 'Tax-Advantaged Accounts',    body: 'Max your Roth IRA ($7,000/yr) and 401k ($23,000/yr) before a taxable brokerage. Tax-free or tax-deferred growth is the single biggest legal advantage in investing.' },
+  { icon: '📊', title: 'Asset Allocation Basics',     body: 'A simple 3-fund portfolio: US stocks (60%), international stocks (30%), bonds (10%). Adjust bond % to your age for appropriate risk.' },
+];
+
+function renderInvestorHub() {
+  renderEducation();
+  fetchMarketNews();
+  renderPortfolio();
+  updateCalc();
+}
+
+// ── Education ─────────────────────────
+function renderEducation() {
+  document.getElementById('eduGrid').innerHTML = EDU_CARDS.map(c => `
+    <div class="edu-card">
+      <div class="edu-icon">${c.icon}</div>
+      <div class="edu-content">
+        <div class="edu-title">${c.title}</div>
+        <div class="edu-body">${c.body}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ── Market News ───────────────────────
+async function fetchMarketNews() {
+  const el = document.getElementById('marketNewsList');
+  el.innerHTML = '<div class="news-loading">Loading latest news…</div>';
+  try {
+    const res  = await fetch('/api/market-news');
+    const data = await res.json();
+    if (!data.items.length) {
+      el.innerHTML = '<div class="news-empty">Could not load news at this time.</div>';
+      return;
+    }
+    el.innerHTML = data.items.map(item => `
+      <a class="news-item" href="${item.link}" target="_blank" rel="noopener">
+        <div class="news-title">${item.title}</div>
+        ${item.description ? `<div class="news-desc">${item.description}</div>` : ''}
+        <div class="news-date">${item.date ? fmtNewsDate(item.date) : ''}</div>
+      </a>`).join('');
+  } catch (_) {
+    el.innerHTML = '<div class="news-empty">Could not load news. Check your connection.</div>';
+  }
+}
+
+function fmtNewsDate(str) {
+  try { return new Date(str).toLocaleString('en-US', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' }); }
+  catch (_) { return str; }
+}
+
+// ── Portfolio Tracker ─────────────────
+async function addStock() {
+  const symbolEl    = document.getElementById('stockSymbol');
+  const sharesEl    = document.getElementById('stockShares');
+  const buyPriceEl  = document.getElementById('stockBuyPrice');
+  const symbol      = symbolEl.value.trim().toUpperCase();
+  const shares      = parseFloat(sharesEl.value);
+  const buyPrice    = parseFloat(buyPriceEl.value);
+
+  if (!symbol || !shares || shares <= 0 || !buyPrice || buyPrice <= 0) {
+    showToast('Fill in all stock fields', 'error'); return;
+  }
+  if (state.portfolio.some(s => s.symbol === symbol)) {
+    showToast(`${symbol} already in portfolio`, 'error'); return;
+  }
+
+  // Fetch current price
+  showToast(`Fetching ${symbol}…`);
+  try {
+    const res  = await fetch(`/api/stock-price?symbol=${encodeURIComponent(symbol)}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    state.portfolio.push({
+      symbol,
+      shares,
+      buyPrice,
+      currentPrice: data.price,
+      change:       data.change,
+      changePct:    data.change_pct,
+      name:         data.name,
+    });
+    saveState();
+    symbolEl.value = ''; sharesEl.value = ''; buyPriceEl.value = '';
+    renderPortfolio();
+    showToast(`${symbol} added!`, 'success');
+  } catch (err) {
+    showToast(err.message || `Could not find ${symbol}`, 'error');
+  }
+}
+
+function removeStock(symbol) {
+  state.portfolio = state.portfolio.filter(s => s.symbol !== symbol);
+  saveState();
+  renderPortfolio();
+}
+
+async function refreshPortfolioPrices() {
+  if (!state.portfolio.length) return;
+  showToast('Refreshing prices…');
+  for (const holding of state.portfolio) {
+    try {
+      const res  = await fetch(`/api/stock-price?symbol=${encodeURIComponent(holding.symbol)}`);
+      const data = await res.json();
+      if (!data.error) {
+        holding.currentPrice = data.price;
+        holding.change       = data.change;
+        holding.changePct    = data.change_pct;
+        holding.name         = data.name;
+      }
+    } catch (_) {}
+  }
+  saveState();
+  renderPortfolio();
+  showToast('Prices updated!', 'success');
+}
+
+function renderPortfolio() {
+  const el = document.getElementById('portfolioTable');
+  if (!state.portfolio.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:24px">No holdings yet. Add a ticker above.</div>';
+    document.getElementById('portfolioTotalLabel').textContent = '';
+    return;
+  }
+
+  let totalValue = 0, totalCost = 0;
+  state.portfolio.forEach(h => {
+    totalValue += (h.currentPrice || h.buyPrice) * h.shares;
+    totalCost  += h.buyPrice * h.shares;
+  });
+  const totalGain    = totalValue - totalCost;
+  const totalGainPct = totalCost > 0 ? (totalGain / totalCost * 100) : 0;
+  const gainCls      = totalGain >= 0 ? 'port-gain' : 'port-loss';
+
+  document.getElementById('portfolioTotalLabel').innerHTML =
+    `Total: <strong>$${totalValue.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong>
+     <span class="${gainCls}">(${totalGain >= 0 ? '+' : ''}$${Math.abs(totalGain).toFixed(2)} / ${totalGainPct >= 0?'+':''}${totalGainPct.toFixed(1)}%)</span>`;
+
+  el.innerHTML = `
+    <div class="table-scroll">
+      <table class="budget-table">
+        <thead>
+          <tr>
+            <th>Ticker</th><th>Shares</th><th>Buy Price</th>
+            <th>Current</th><th>Day Change</th><th>Value</th><th>Gain / Loss</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${state.portfolio.map(h => {
+            const curr    = h.currentPrice || h.buyPrice;
+            const value   = curr * h.shares;
+            const gain    = (curr - h.buyPrice) * h.shares;
+            const gainPct = h.buyPrice > 0 ? ((curr - h.buyPrice) / h.buyPrice * 100) : 0;
+            const dayCls  = h.change >= 0 ? 'port-gain' : 'port-loss';
+            const gainCls = gain >= 0 ? 'port-gain' : 'port-loss';
+            return `<tr>
+              <td><strong>${h.symbol}</strong><br><span style="font-size:11px;color:var(--text-3)">${h.name||''}</span></td>
+              <td>${h.shares}</td>
+              <td>$${h.buyPrice.toFixed(2)}</td>
+              <td>$${curr.toFixed(2)}</td>
+              <td class="${dayCls}">${h.change >= 0?'+':''}$${(h.change||0).toFixed(2)} (${h.changePct>=0?'+':''}${(h.changePct||0).toFixed(2)}%)</td>
+              <td><strong>$${value.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></td>
+              <td class="${gainCls}">${gain >= 0?'+':''}$${Math.abs(gain).toFixed(2)} (${gainPct>=0?'+':''}${gainPct.toFixed(1)}%)</td>
+              <td><button class="txn-del" onclick="removeStock('${h.symbol}')">✕</button></td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+// ── Compound Calculator ───────────────
+function updateCalc() {
+  const initial  = parseFloat(document.getElementById('calcInitial').value)  || 0;
+  const monthly  = parseFloat(document.getElementById('calcMonthly').value)  || 0;
+  const rate     = parseFloat(document.getElementById('calcRate').value)      || 0;
+  const years    = parseInt(document.getElementById('calcYears').value)       || 1;
+
+  const r       = rate / 100 / 12;   // monthly rate
+  const n       = years * 12;        // total months
+  const labels  = [];
+  const values  = [];
+  const invested= [];
+
+  for (let yr = 0; yr <= years; yr++) {
+    const m   = yr * 12;
+    const fv  = r > 0
+      ? initial * Math.pow(1 + r, m) + monthly * ((Math.pow(1 + r, m) - 1) / r)
+      : initial + monthly * m;
+    labels.push(yr === 0 ? 'Now' : `Yr ${yr}`);
+    values.push(parseFloat(fv.toFixed(2)));
+    invested.push(parseFloat((initial + monthly * m).toFixed(2)));
+  }
+
+  const totalValue    = values[values.length - 1];
+  const totalInvested = invested[invested.length - 1];
+  const totalGains    = totalValue - totalInvested;
+
+  const fmt = n => '$' + Math.round(n).toLocaleString();
+  document.getElementById('calcTotal').textContent    = fmt(totalValue);
+  document.getElementById('calcInvested').textContent = fmt(totalInvested);
+  document.getElementById('calcGains').textContent    = fmt(totalGains);
+
+  renderCompoundChart(labels, values, invested);
+}
+
+function renderCompoundChart(labels, values, invested) {
+  if (compoundChart) { compoundChart.destroy(); compoundChart = null; }
+  const ctx = document.getElementById('compoundChart').getContext('2d');
+  compoundChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Total Value',
+          data: values,
+          borderColor: '#059669',
+          backgroundColor: 'rgba(5,150,105,.12)',
+          fill: true,
+          tension: 0.4,
+          pointRadius: 3,
+          borderWidth: 2,
+        },
+        {
+          label: 'Amount Invested',
+          data: invested,
+          borderColor: '#94a3b8',
+          backgroundColor: 'transparent',
+          borderDash: [5, 4],
+          tension: 0.4,
+          pointRadius: 0,
+          borderWidth: 1.5,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { font: { family: 'Inter', size: 12 }, boxWidth: 14 } },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` $${Math.round(ctx.parsed.y).toLocaleString()}`,
+          },
+        },
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { callback: v => '$' + (v >= 1000 ? (v/1000).toFixed(0)+'k' : v) },
+          grid: { color: '#e2e8f0' },
+        },
+        x: { grid: { display: false } },
+      },
+    },
+  });
+}
+
+// ── Investing Chat ────────────────────
+function getInvestCtx() {
+  const sp = state.budgetPlan?.savings_plan;
+  return {
+    income:         state.income,
+    totalBills:     state.bills.reduce((s, b) => s + (+b.amount), 0),
+    totalVariable:  state.habits.reduce((s, h) => s + (+h.estimated), 0),
+    savingsMonthly: sp?.monthly_amount || 0,
+    score:          state.budgetPlan?.financial_score,
+  };
+}
+
+async function sendInvestMessage() {
+  const input = document.getElementById('investChatInput');
+  const msg   = input.value.trim();
+  if (!msg) return;
+  const btn = document.getElementById('investSendBtn');
+  btn.disabled = true;
+  input.value  = '';
+  input.style.height = 'auto';
+
+  appendInvestMsg('user', msg);
+  investChatHistory.push({ role: 'user', content: msg });
+
+  const typingId = addInvestTyping();
+
+  try {
+    const res = await fetch('/api/investing-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: investChatHistory, context: getInvestCtx() }),
+    });
+    document.getElementById(typingId)?.remove();
+
+    const msgEl  = appendInvestMsg('ai', '');
+    const bubble = msgEl.querySelector('.msg-bubble p');
+    let full = '';
+    const reader  = res.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      for (const line of decoder.decode(value).split('\n')) {
+        if (!line.startsWith('data: ')) continue;
+        const raw = line.slice(6);
+        if (raw === '[DONE]') break;
+        try {
+          const d = JSON.parse(raw);
+          if (d.text) { full += d.text; bubble.textContent = full; scrollInvestChat(); }
+        } catch (_) {}
+      }
+    }
+    investChatHistory.push({ role: 'assistant', content: full });
+  } catch (_) {
+    document.getElementById(typingId)?.remove();
+    appendInvestMsg('ai', 'Sorry, something went wrong. Please try again.');
+  }
+  btn.disabled = false;
+}
+
+function sendInvestSuggested(el) {
+  document.getElementById('investChatInput').value = el.textContent.trim();
+  sendInvestMessage();
+}
+function handleInvestChatKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendInvestMessage(); }
+  setTimeout(() => {
+    const t = document.getElementById('investChatInput');
+    t.style.height = 'auto';
+    t.style.height = Math.min(t.scrollHeight, 120) + 'px';
+  }, 0);
+}
+function appendInvestMsg(role, text) {
+  const c = document.getElementById('investChatMessages');
+  const d = document.createElement('div');
+  d.className = 'chat-msg ' + role;
+  d.innerHTML = `<div class="msg-avatar">${role === 'ai' ? '📈' : '👤'}</div><div class="msg-bubble"><p>${text}</p></div>`;
+  c.appendChild(d);
+  scrollInvestChat();
+  return d;
+}
+function addInvestTyping() {
+  const c  = document.getElementById('investChatMessages');
+  const id = 'ityp-' + Date.now();
+  const d  = document.createElement('div');
+  d.className = 'chat-msg ai'; d.id = id;
+  d.innerHTML = `<div class="msg-avatar">📈</div><div class="msg-bubble"><div class="typing-dots"><span></span><span></span><span></span></div></div>`;
+  c.appendChild(d); scrollInvestChat(); return id;
+}
+function scrollInvestChat() {
+  const c = document.getElementById('investChatMessages');
   c.scrollTop = c.scrollHeight;
 }
 

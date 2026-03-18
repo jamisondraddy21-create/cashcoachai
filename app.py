@@ -127,6 +127,17 @@ def get_or_create_pro_price_id():
     )
 
 
+def get_or_create_investor_price_id():
+    """Return the Stripe price ID for the $39.99/month Investor plan."""
+    return _get_or_create_price(
+        settings_key='stripe_investor_price_id',
+        env_key='STRIPE_INVESTOR_PRICE_ID',
+        unit_amount=3999,
+        plan_name='CashCoachAI Investor',
+        plan_description='Daily market news, portfolio tracker, compound calculator & AI investing coach',
+    )
+
+
 init_db()
 
 
@@ -185,6 +196,8 @@ def create_checkout_session():
 
     if plan == 'pro':
         price_id = get_or_create_pro_price_id()
+    elif plan == 'investor':
+        price_id = get_or_create_investor_price_id()
     else:
         price_id = get_or_create_price_id()
         plan = 'basic'
@@ -314,6 +327,145 @@ def stripe_webhook():
         conn.close()
 
     return '', 200
+
+
+# ─── Investor Routes ───────────────────────────
+
+@app.route('/api/market-news')
+def market_news():
+    import urllib.request
+    import xml.etree.ElementTree as ET
+
+    feeds = [
+        'https://feeds.finance.yahoo.com/rss/2.0/headline?s=SPY,QQQ,DIA,AAPL,MSFT&region=US&lang=en-US',
+        'https://www.cnbc.com/id/100003114/device/rss/rss.html',
+        'https://feeds.marketwatch.com/marketwatch/topstories/',
+    ]
+
+    for feed_url in feeds:
+        try:
+            req = urllib.request.Request(
+                feed_url,
+                headers={'User-Agent': 'Mozilla/5.0 (compatible; CashCoachAI/1.0)'},
+            )
+            with urllib.request.urlopen(req, timeout=8) as response:
+                content = response.read()
+
+            root  = ET.fromstring(content)
+            items = []
+            for item in root.findall('.//item')[:10]:
+                title       = item.findtext('title', '').strip()
+                link        = item.findtext('link', '').strip()
+                pub_date    = item.findtext('pubDate', '').strip()
+                description = item.findtext('description', '').strip()
+                # Strip HTML tags from description
+                description = re.sub(r'<[^>]+>', '', description)[:200]
+
+                if title and link:
+                    items.append({
+                        'title':       title,
+                        'link':        link,
+                        'date':        pub_date,
+                        'description': description,
+                    })
+
+            if items:
+                return jsonify({'items': items})
+        except Exception:
+            continue
+
+    return jsonify({'items': [], 'error': 'Could not load market news at this time.'})
+
+
+@app.route('/api/stock-price')
+def stock_price():
+    import urllib.request
+
+    symbol = request.args.get('symbol', '').upper().strip()
+    if not symbol or not re.match(r'^[A-Z0-9.\-]{1,10}$', symbol):
+        return jsonify({'error': 'Invalid ticker symbol'}), 400
+
+    url = f'https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=1d'
+    try:
+        req = urllib.request.Request(
+            url,
+            headers={
+                'User-Agent': 'Mozilla/5.0 (compatible; CashCoachAI/1.0)',
+                'Accept':     'application/json',
+            },
+        )
+        with urllib.request.urlopen(req, timeout=8) as response:
+            data = json.loads(response.read())
+
+        meta       = data['chart']['result'][0]['meta']
+        price      = meta.get('regularMarketPrice', 0)
+        prev_close = meta.get('previousClose', price)
+        change     = price - prev_close
+        change_pct = (change / prev_close * 100) if prev_close else 0
+
+        return jsonify({
+            'symbol':     symbol,
+            'price':      round(price, 2),
+            'change':     round(change, 2),
+            'change_pct': round(change_pct, 2),
+            'name':       meta.get('shortName', meta.get('longName', symbol)),
+        })
+    except Exception:
+        return jsonify({'error': f'Could not fetch price for {symbol}. Check the ticker symbol.'}), 400
+
+
+@app.route('/api/investing-chat', methods=['POST'])
+def investing_chat():
+    data     = request.json
+    messages = data.get('messages', [])
+    ctx      = data.get('context', {})
+
+    income         = ctx.get('income', 0)
+    total_bills    = ctx.get('totalBills', 0)
+    total_variable = ctx.get('totalVariable', 0)
+    savings        = ctx.get('savingsMonthly', 0)
+    score          = ctx.get('score', 'N/A')
+    investable     = max(0, income - total_bills - total_variable - savings)
+
+    system = f"""You are an AI Investing Coach inside CashCoachAI. Your role is investing education and helping users understand whether their budget supports investing.
+
+USER'S FINANCIAL PROFILE:
+- Monthly Take-Home Income: ${income:,.2f}
+- Fixed Monthly Bills: ${total_bills:,.2f}
+- Variable Monthly Spending: ${total_variable:,.2f}
+- Monthly Savings: ${savings:,.2f}
+- Estimated Investable Surplus: ${investable:,.2f}
+- Financial Health Score: {score}/100
+
+GUIDELINES:
+- Provide clear, educational explanations of investing concepts tied to their actual numbers
+- Emphasize the right order: emergency fund → high-interest debt → tax-advantaged accounts → taxable investing
+- Explain index funds, ETFs, compound interest, Roth IRA, 401k, dollar-cost averaging
+- Be honest about whether their current budget supports investing
+- Never recommend specific individual stocks — focus on diversified, long-term strategies
+- Keep responses concise (2-4 paragraphs or bullet points)
+- Always mention Roth IRA / 401k before taxable brokerage accounts"""
+
+    def generate():
+        try:
+            with get_client().messages.stream(
+                model='claude-opus-4-6',
+                max_tokens=1024,
+                system=system,
+                messages=messages,
+            ) as stream:
+                for text in stream.text_stream:
+                    yield f"data: {json.dumps({'text': text})}\n\n"
+            yield 'data: [DONE]\n\n'
+        except Exception as e:
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            yield 'data: [DONE]\n\n'
+
+    return Response(
+        stream_with_context(generate()),
+        content_type='text/event-stream',
+        headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'},
+    )
 
 
 # ─── Contact Route ─────────────────────────────
