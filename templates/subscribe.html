@@ -147,7 +147,6 @@
       font-size: 0.85rem;
       font-weight: 600;
       color: #64748b;
-      text-decoration: none;
       padding: 8px 16px;
       border: 1px solid #e2e8f0;
       border-radius: 8px;
@@ -155,6 +154,8 @@
       white-space: nowrap;
       z-index: 100;
       box-shadow: 0 1px 4px rgba(0,0,0,.06);
+      cursor: pointer;
+      font-family: inherit;
       transition: color .15s, border-color .15s;
     }
     .sub-login-btn:hover { color: #0f172a; border-color: #94a3b8; }
@@ -162,7 +163,7 @@
 </head>
 <body class="sub-body">
 
-<a href="/login" class="sub-login-btn">Already a member? Log in →</a>
+<button class="sub-login-btn" onclick="window.location.href='/login'">Already a member? Log in →</button>
 
 <div class="sub-page sub-page-3col">
 

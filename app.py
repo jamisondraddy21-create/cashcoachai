@@ -351,23 +351,25 @@ def subscribe_success():
     if not session_id:
         return redirect('/subscribe')
 
+    token = None
+    is_new = False
+
     try:
-        session = stripe.checkout.Session.retrieve(session_id)
-        customer_id     = session.customer
-        subscription_id = session.subscription
-        email = (session.customer_details.email
-                 if session.customer_details else None)
+        checkout = stripe.checkout.Session.retrieve(session_id)
+        customer_id     = checkout.customer
+        subscription_id = checkout.subscription
+        email = (checkout.customer_details.email
+                 if checkout.customer_details else None)
 
         sub    = stripe.Subscription.retrieve(subscription_id)
         status = sub.status   # 'trialing', 'active', etc.
+        plan   = checkout.metadata.get('plan', 'basic') if checkout.metadata else 'basic'
 
-        conn = get_db()
+        conn     = get_db()
         existing = conn.execute(
             'SELECT token FROM subscriptions WHERE stripe_customer_id = ?',
             (customer_id,)
         ).fetchone()
-
-        plan = session.metadata.get('plan', 'basic') if session.metadata else 'basic'
 
         if existing:
             token = existing['token']
@@ -378,7 +380,8 @@ def subscribe_success():
                 (subscription_id, email, status, plan, customer_id)
             )
         else:
-            token = str(uuid.uuid4())
+            token  = str(uuid.uuid4())
+            is_new = True
             conn.execute(
                 '''INSERT INTO subscriptions
                    (token, stripe_customer_id, stripe_subscription_id, email, status, plan)
@@ -388,12 +391,17 @@ def subscribe_success():
         conn.commit()
         conn.close()
 
-        if not existing and email:
+        if is_new and email:
             send_welcome_email(email, plan)
 
-        return redirect(f'/setup-password?token={token}')
     except Exception:
+        # If Stripe/DB fails but we have a token, still get the user into the app
+        if token:
+            return redirect(f'/setup-password?token={token}')
+        # Otherwise show a clear error on the pricing page
         return redirect('/subscribe?error=1')
+
+    return redirect(f'/setup-password?token={token}')
 
 
 @app.route('/api/check-subscription')
