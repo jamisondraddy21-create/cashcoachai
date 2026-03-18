@@ -145,35 +145,45 @@ init_db()
 
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
-    error = None
+    error      = None
+    show_plans = False
+    password   = ''
 
     if request.method == 'POST':
         password = request.form.get('password', '')
+        plan     = request.form.get('plan', '').strip()
+
         if password == ADMIN_PASSWORD:
-            # Get or create a permanent admin bypass token
-            conn = get_db()
-            row = conn.execute(
-                "SELECT token FROM subscriptions WHERE email='admin@cashcoachai.internal'"
-            ).fetchone()
+            if plan in ('basic', 'pro', 'investor'):
+                # Create or update a plan-specific admin token
+                email = f'admin-{plan}@cashcoachai.internal'
+                conn  = get_db()
+                row   = conn.execute(
+                    'SELECT token FROM subscriptions WHERE email=?', (email,)
+                ).fetchone()
 
-            if row:
-                token = row['token']
-            else:
-                token = str(uuid.uuid4())
-                conn.execute(
-                    '''INSERT INTO subscriptions
-                       (token, email, status)
-                       VALUES (?, 'admin@cashcoachai.internal', 'active')''',
-                    (token,)
-                )
+                if row:
+                    token = row['token']
+                    conn.execute(
+                        "UPDATE subscriptions SET plan=?, status='active', updated_at=CURRENT_TIMESTAMP WHERE email=?",
+                        (plan, email)
+                    )
+                else:
+                    token = str(uuid.uuid4())
+                    conn.execute(
+                        "INSERT INTO subscriptions (token, email, status, plan) VALUES (?, ?, 'active', ?)",
+                        (token, email, plan)
+                    )
                 conn.commit()
-            conn.close()
-
-            return redirect(f'/?token={token}')
+                conn.close()
+                return redirect(f'/?token={token}')
+            else:
+                # Password correct but no plan chosen yet — show plan selector
+                show_plans = True
         else:
             error = 'Incorrect password.'
 
-    return render_template('admin.html', error=error)
+    return render_template('admin.html', error=error, show_plans=show_plans, admin_password=password)
 
 
 # ─── Subscription Routes ───────────────────────

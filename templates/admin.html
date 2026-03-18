@@ -10,16 +10,85 @@
 </head>
 <body class="sub-body">
 
-<div class="sub-page">
+<div class="sub-page" style="max-width:560px">
   <div class="sub-brand">
     <span class="sub-logo">💰</span>
     <span class="sub-title">CashCoach<span class="accent">AI</span></span>
   </div>
 
-  <div class="sub-card" style="max-width:360px">
+  {% if show_plans %}
+
+  <!-- Plan Selector -->
+  <div class="sub-card" style="width:100%">
+    <div style="font-size:36px;margin-bottom:10px">🔐</div>
+    <h2 style="font-size:20px;font-weight:700;margin-bottom:6px">Select Plan to Preview</h2>
+    <p style="font-size:14px;color:var(--text-2);margin-bottom:28px">
+      Choose which plan experience to load. Each gives full access to that tier's features.
+    </p>
+
+    <div class="admin-plans">
+
+      <!-- Basic -->
+      <form method="POST" action="/admin">
+        <input type="hidden" name="password" value="{{ admin_password }}" />
+        <input type="hidden" name="plan" value="basic" />
+        <button type="submit" class="admin-plan-btn">
+          <div class="admin-plan-icon">📋</div>
+          <div class="admin-plan-info">
+            <div class="admin-plan-name">Basic</div>
+            <div class="admin-plan-price">$9.99 / month</div>
+            <div class="admin-plan-desc">Budget plan, health score, tracker, AI advisor (25 msg)</div>
+          </div>
+          <div class="admin-plan-arrow">→</div>
+        </button>
+      </form>
+
+      <!-- Pro -->
+      <form method="POST" action="/admin">
+        <input type="hidden" name="password" value="{{ admin_password }}" />
+        <input type="hidden" name="plan" value="pro" />
+        <button type="submit" class="admin-plan-btn admin-plan-btn-pro">
+          <div class="admin-plan-icon">⭐</div>
+          <div class="admin-plan-info">
+            <div class="admin-plan-name">Pro <span class="admin-badge">Most Popular</span></div>
+            <div class="admin-plan-price">$19.99 / month</div>
+            <div class="admin-plan-desc">Unlimited AI advisor, priority support, savings goals, monthly report</div>
+          </div>
+          <div class="admin-plan-arrow">→</div>
+        </button>
+      </form>
+
+      <!-- Investor -->
+      <form method="POST" action="/admin">
+        <input type="hidden" name="password" value="{{ admin_password }}" />
+        <input type="hidden" name="plan" value="investor" />
+        <button type="submit" class="admin-plan-btn admin-plan-btn-investor">
+          <div class="admin-plan-icon">💎</div>
+          <div class="admin-plan-info">
+            <div class="admin-plan-name">Investor <span class="admin-badge admin-badge-gold">Best Value</span></div>
+            <div class="admin-plan-price">$39.99 / month</div>
+            <div class="admin-plan-desc">Market news, portfolio tracker, compound calculator, AI investing coach</div>
+          </div>
+          <div class="admin-plan-arrow">→</div>
+        </button>
+      </form>
+
+    </div>
+  </div>
+
+  <p class="sub-footer-note">
+    <a href="/admin" class="sub-link">← Back to login</a>
+  </p>
+
+  {% else %}
+
+  <!-- Password Form -->
+  <div class="sub-card" style="max-width:360px;width:100%">
     <div style="font-size:36px;margin-bottom:12px">🔐</div>
     <h2 style="font-size:20px;font-weight:700;margin-bottom:6px">Admin Access</h2>
-    <p style="font-size:14px;color:var(--text-2);margin-bottom:24px">Enter the admin password to bypass the subscription page.</p>
+    <p style="font-size:14px;color:var(--text-2);margin-bottom:24px">
+      Enter the admin password to preview any subscription plan.
+    </p>
 
     <form method="POST" action="/admin">
       <div class="contact-field" style="text-align:left;margin-bottom:16px">
@@ -41,6 +110,8 @@
   <p class="sub-footer-note">
     <a href="/subscribe" class="sub-link">← Back to subscribe page</a>
   </p>
+
+  {% endif %}
 </div>
 
 </body>
