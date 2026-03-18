@@ -80,8 +80,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // ─── Subscription Check ────────────────
 async function checkSubscription() {
-  // Demo mode: banner + profiles are JS-driven; plan is already set server-side via ?demo=1
-  if (localStorage.getItem('cca_demo') === '1') {
+  // Demo mode: only apply if user is NOT a logged-in paying customer
+  if (localStorage.getItem('cca_demo') === '1' && !window.CCA_LOGGED_IN) {
     window.CCA_PLAN = 'investor';
     document.getElementById('demoBanner').style.display = 'flex';
     loadDemoProfile('getting-by');
