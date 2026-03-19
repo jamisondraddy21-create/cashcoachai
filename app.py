@@ -982,10 +982,11 @@ def _auth_cookie(resp, token):
     return resp
 
 
-@app.route('/setup')
+@app.route('/setup', methods=['GET', 'POST'])
 def setup():
-    """Landing page for brand-new subscribers. Auth via URL token → cookie."""
-    url_token = request.args.get('token', '')
+    """Landing page for brand-new subscribers. Auth via cca_token cookie or token param/field."""
+    # Accept token from POST body, GET param, or existing cookie (in that priority order)
+    url_token = request.form.get('token', '') or request.args.get('token', '')
     user      = get_current_user(url_token=url_token)
 
     plan       = user['plan'] or 'basic' if user else 'basic'
