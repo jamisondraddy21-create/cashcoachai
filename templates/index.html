@@ -34,7 +34,7 @@
     <button class="nav-tab" data-view="account"   onclick="navigate('account')" id="accountNavTab">⚙️ Account</button>
     {% endif %}
   </div>
-  <button class="btn-reset" onclick="resetApp()" title="Start over">↺ Reset</button>
+  {% if logged_in %}<button class="btn-reset" onclick="resetApp()" title="Start over">↺ Reset</button>{% endif %}
 </nav>
 
 <!-- ═══ DEMO BANNER ═══ -->

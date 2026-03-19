@@ -214,7 +214,7 @@ def admin():
                     )
                 conn.commit()
                 conn.close()
-                return redirect(f'/?token={token}&plan={plan}')
+                return redirect(f'/app?token={token}&plan={plan}')
             else:
                 # Password correct but no plan chosen yet — show plan selector
                 show_plans = True
@@ -427,14 +427,14 @@ def subscribe_success():
         print(f'[DEBUG /subscribe/success] EXCEPTION: {e}', flush=True)
         # On any failure, still send the user into the app if we have a token
         if token:
-            return redirect(f'/?token={token}')
-        return redirect('/subscribe?error=1')
+            return redirect(f'/app?token={token}')
+        return redirect('/?error=1')
 
     if is_new:
         print(f'[DEBUG /subscribe/success] redirecting new user to /create-password?token={token}', flush=True)
         return redirect(f'/create-password?token={token}')
-    print(f'[DEBUG /subscribe/success] redirecting returning user to /?token={token}', flush=True)
-    return redirect(f'/?token={token}')
+    print(f'[DEBUG /subscribe/success] redirecting returning user to /app?token={token}', flush=True)
+    return redirect(f'/app?token={token}')
 
 
 @app.route('/debug/session')
@@ -737,7 +737,7 @@ def contact():
 @app.route('/login')
 def login_page():
     if get_current_user():
-        return redirect('/')
+        return redirect('/app')
     returning = request.args.get('returning') == '1'
     return render_template('login.html', returning=returning)
 
@@ -773,7 +773,7 @@ def api_login():
 
 @app.route('/logout')
 def logout():
-    resp = make_response(redirect('/subscribe'))
+    resp = make_response(redirect('/'))
     resp.delete_cookie('cca_token')
     return resp
 
@@ -1020,39 +1020,53 @@ def _auth_cookie(resp, token):
 
 @app.route('/setup', methods=['GET', 'POST'])
 def setup():
-    """Landing page for brand-new subscribers. Auth via cca_token cookie or token param/field."""
-    # Accept token from POST body, GET param, or existing cookie (in that priority order)
+    """Entry point for brand-new subscribers after password creation. Requires valid auth."""
+    # Accept token from POST body, GET param, or existing cookie
     url_token = request.form.get('token', '') or request.args.get('token', '')
     user      = get_current_user(url_token=url_token)
 
-    plan       = user['plan'] or 'basic' if user else 'basic'
-    logged_in  = bool(user)
-    user_email = (user['email'] or '').lower() if user else ''
+    if not user:
+        return redirect('/')
 
-    resp = make_response(render_template('index.html', plan=plan, logged_in=logged_in, user_email=user_email))
-    if user:
-        _auth_cookie(resp, user['token'])
+    resp = make_response(render_template(
+        'index.html',
+        plan=user['plan'] or 'basic',
+        logged_in=True,
+        user_email=(user['email'] or '').lower(),
+    ))
+    _auth_cookie(resp, user['token'])
+    return resp
+
+
+@app.route('/app')
+def app_view():
+    """The dashboard — requires a valid cca_token cookie. Demo mode via ?demo=1."""
+    if request.args.get('demo') == '1':
+        return render_template('index.html', plan='investor', logged_in=False, user_email='')
+
+    url_token = request.args.get('token', '')
+    user      = get_current_user(url_token=url_token)
+
+    if not user:
+        return redirect('/')
+
+    resp = make_response(render_template(
+        'index.html',
+        plan=user['plan'] or 'basic',
+        logged_in=True,
+        user_email=(user['email'] or '').lower(),
+    ))
+    _auth_cookie(resp, user['token'])
     return resp
 
 
 @app.route('/')
 def index():
-    url_token = request.args.get('token', '')
-    is_demo   = request.args.get('demo') == '1'
-
-    if is_demo:
-        resp = make_response(render_template('index.html', plan='investor', logged_in=False, user_email=''))
-        return resp
-
-    user       = get_current_user(url_token=url_token)
-    plan       = user['plan'] or 'basic' if user else 'basic'
-    logged_in  = bool(user)
-    user_email = (user['email'] or '').lower() if user else ''
-
-    resp = make_response(render_template('index.html', plan=plan, logged_in=logged_in, user_email=user_email))
+    """Landing page with pricing and demo. Redirects logged-in users to /app."""
+    user = get_current_user()
     if user:
-        _auth_cookie(resp, user['token'])
-    return resp
+        return redirect('/app')
+    return render_template('subscribe.html', stripe_pub_key=os.environ.get('STRIPE_PUBLISHABLE_KEY', ''))
 
 
 @app.route('/api/generate-plan', methods=['POST'])

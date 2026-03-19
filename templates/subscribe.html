@@ -381,7 +381,7 @@
   </div>
 
   <p class="sub-footer-note" style="margin-top:12px">
-    Already subscribed? <a href="/" class="sub-link">Return to app</a>
+    Already subscribed? <a href="/app" class="sub-link">Return to app</a>
   </p>
 
 </div>
@@ -418,7 +418,7 @@ async function startTrial(plan) {
 
 function startDemo() {
   localStorage.setItem('cca_demo', '1');
-  window.location.href = '/?demo=1';
+  window.location.href = '/app?demo=1';
 }
 
 if (new URLSearchParams(window.location.search).get('error')) {

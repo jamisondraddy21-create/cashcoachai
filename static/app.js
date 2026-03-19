@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const urlToken = params.get('token');
   if (urlToken) {
     localStorage.setItem('cca_sub_token', urlToken);
-    window.history.replaceState({}, document.title, '/');
+    window.history.replaceState({}, document.title, '/app');
   }
 
   // Verify subscription (confirms plan matches server-rendered nav)
@@ -94,7 +94,7 @@ async function checkSubscription() {
     const data  = await res.json();
 
     if (!data.dev_mode && !data.active) {
-      window.location.href = '/subscribe';
+      window.location.href = '/';
       return false;
     }
 
@@ -105,7 +105,7 @@ async function checkSubscription() {
 
     // If server rendered stale nav (e.g. session expired), reload so server re-renders correctly
     if (confirmedPlan !== serverPlan) {
-      window.location.href = token ? `/?token=${encodeURIComponent(token)}` : '/';
+      window.location.href = token ? `/app?token=${encodeURIComponent(token)}` : '/app';
       return false;
     }
 
@@ -1592,7 +1592,7 @@ async function cancelSubscription() {
     } else {
       statusEl.style.color = 'var(--text-2)';
       statusEl.textContent = 'Subscription canceled. Redirecting…';
-      setTimeout(() => { window.location.href = '/subscribe'; }, 2000);
+      setTimeout(() => { window.location.href = '/'; }, 2000);
     }
   } catch (_) {
     statusEl.style.color = '#dc2626';
