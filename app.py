@@ -859,8 +859,16 @@ def api_set_password():
 
 @app.route('/api/save-data', methods=['POST'])
 def save_data():
-    data = request.json or {}
-    user = get_current_user()
+    data  = request.json or {}
+    token = request.cookies.get('cca_token', '')
+    if not token:
+        return jsonify({'error': 'Not authenticated.'}), 401
+
+    conn = get_db()
+    user = conn.execute(
+        'SELECT id FROM subscriptions WHERE token=?', (token,)
+    ).fetchone()
+    conn.close()
     if not user:
         return jsonify({'error': 'Not authenticated.'}), 401
     user_id = user['id']
@@ -886,14 +894,20 @@ def save_data():
 
 @app.route('/api/load-data')
 def load_data():
-    user = get_current_user()
-    if not user:
+    token = request.cookies.get('cca_token', '')
+    if not token:
         return jsonify({'data': None})
-    user_id = user['id']
 
-    conn = get_db()
-    row  = conn.execute(
-        'SELECT * FROM user_data WHERE subscription_id=?', (user_id,)
+    conn  = get_db()
+    user  = conn.execute(
+        'SELECT id FROM subscriptions WHERE token=?', (token,)
+    ).fetchone()
+    if not user:
+        conn.close()
+        return jsonify({'data': None})
+
+    row = conn.execute(
+        'SELECT * FROM user_data WHERE subscription_id=?', (user['id'],)
     ).fetchone()
     conn.close()
 
