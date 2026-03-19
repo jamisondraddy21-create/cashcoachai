@@ -6,7 +6,8 @@ import anthropic
 import json
 import re
 import os
-import sqlite3
+import psycopg2
+import psycopg2.extras
 import uuid
 import smtplib
 from email.mime.text import MIMEText
@@ -37,43 +38,62 @@ ADMIN_PASSWORD          = os.environ.get('ADMIN_PASSWORD', 'cashcoach_admin_2024
 
 
 # ─── Database ──────────────────────────────────
-DB_PATH = '/tmp/cashcoach.db'
+DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://localhost/cashcoach')
+
+
+class _PgConn:
+    """Thin wrapper to give psycopg2 connections a sqlite3-like interface."""
+    def __init__(self, conn):
+        self._conn = conn
+        self._cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    def execute(self, sql, params=None):
+        self._cur.execute(sql.replace('?', '%s'), params or ())
+        return self._cur
+
+    def commit(self):
+        self._conn.commit()
+
+    def close(self):
+        self._cur.close()
+        self._conn.close()
 
 
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    return _PgConn(psycopg2.connect(DATABASE_URL))
 
 
 def init_db():
     conn = get_db()
-    conn.executescript('''
-        CREATE TABLE IF NOT EXISTS subscriptions (
-            id                     INTEGER PRIMARY KEY AUTOINCREMENT,
+    for sql in [
+        '''CREATE TABLE IF NOT EXISTS subscriptions (
+            id                     SERIAL PRIMARY KEY,
             token                  TEXT UNIQUE NOT NULL,
             stripe_customer_id     TEXT,
             stripe_subscription_id TEXT,
             email                  TEXT,
             status                 TEXT DEFAULT 'pending',
             plan                   TEXT DEFAULT 'basic',
+            password_hash          TEXT,
             created_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE TABLE IF NOT EXISTS settings (
+        )''',
+        '''CREATE TABLE IF NOT EXISTS settings (
             key   TEXT PRIMARY KEY,
             value TEXT
-        );
-        CREATE TABLE IF NOT EXISTS user_data (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        )''',
+        '''CREATE TABLE IF NOT EXISTS user_data (
+            id              SERIAL PRIMARY KEY,
             subscription_id INTEGER NOT NULL UNIQUE,
             income          REAL    DEFAULT 0,
             bills           TEXT    DEFAULT '[]',
             habits          TEXT    DEFAULT '[]',
             budget_plan     TEXT,
             updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-    ''')
+        )''',
+    ]:
+        conn.execute(sql)
+    conn.commit()
     # Migrations for older DB schemas
     for migration in [
         "ALTER TABLE subscriptions ADD COLUMN plan TEXT DEFAULT 'basic'",
@@ -83,7 +103,7 @@ def init_db():
             conn.execute(migration)
             conn.commit()
         except Exception:
-            pass  # Column already exists
+            conn._conn.rollback()  # Must rollback failed transaction in PostgreSQL
     conn.close()
 
 
@@ -111,8 +131,10 @@ def _get_or_create_price(settings_key, env_key, unit_amount, plan_name, plan_des
             recurring={'interval': 'month'},
         )
         conn = get_db()
-        conn.execute('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
-                     (settings_key, price.id))
+        conn.execute(
+            'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value',
+            (settings_key, price.id)
+        )
         conn.commit()
         conn.close()
         return price.id
