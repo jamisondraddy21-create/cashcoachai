@@ -3,162 +3,214 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CashCoachAI — Choose Your Plan</title>
+  <title>CashCoachAI — Your Personal AI Financial Coach</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
   <style>
-    /* ── Comparison Section ── */
-    .compare-section {
-      width: 100%;
-      margin: 56px 0 0;
+
+    /* ── Login button ── */
+    .sub-login-btn {
+      position: fixed;
+      top: 20px; right: 24px;
+      font-size: 0.85rem; font-weight: 600;
+      color: #64748b; padding: 8px 16px;
+      border: 1px solid #e2e8f0; border-radius: 8px;
+      background: #fff; white-space: nowrap; z-index: 100;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+      cursor: pointer; font-family: inherit;
+      transition: color .15s, border-color .15s;
     }
-    .compare-section h2 {
+    .sub-login-btn:hover { color: #0f172a; border-color: #94a3b8; }
+
+    /* ── Hero ── */
+    .hero {
+      width: 100%; text-align: center;
+      padding: 72px 16px 64px;
+    }
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #dcfce7; color: #15803d;
+      font-size: 0.82rem; font-weight: 700;
+      padding: 6px 14px; border-radius: 999px;
+      letter-spacing: 0.03em; text-transform: uppercase;
+      margin-bottom: 28px;
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.25rem);
+      font-weight: 800; color: #0f172a;
+      line-height: 1.12; letter-spacing: -0.03em;
+      margin: 0 0 20px;
+    }
+    .hero h1 .hero-accent { color: #059669; }
+    .hero-sub {
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
+      color: #475569; line-height: 1.6;
+      max-width: 580px; margin: 0 auto 40px;
+    }
+    .hero-btns {
+      display: flex; gap: 14px;
+      justify-content: center; flex-wrap: wrap;
+    }
+    .hero-btn-primary {
+      background: #059669; color: #fff;
+      font-size: 1rem; font-weight: 700;
+      padding: 14px 32px; border-radius: 10px;
+      border: none; cursor: pointer; font-family: inherit;
+      box-shadow: 0 4px 14px rgba(5,150,105,.35);
+      transition: background .15s, transform .15s, box-shadow .15s;
+    }
+    .hero-btn-primary:hover {
+      background: #047857;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(5,150,105,.4);
+    }
+    .hero-btn-secondary {
+      background: #fff; color: #0f172a;
+      font-size: 1rem; font-weight: 600;
+      padding: 14px 32px; border-radius: 10px;
+      border: 2px solid #e2e8f0; cursor: pointer; font-family: inherit;
+      transition: border-color .15s, transform .15s;
+    }
+    .hero-btn-secondary:hover {
+      border-color: #059669; color: #059669;
+      transform: translateY(-2px);
+    }
+    .hero-trust {
+      margin-top: 28px; font-size: 0.83rem;
+      color: #94a3b8; display: flex;
+      justify-content: center; align-items: center; gap: 18px;
+      flex-wrap: wrap;
+    }
+    .hero-trust span { display: flex; align-items: center; gap: 5px; }
+
+    /* ── How It Works ── */
+    .how-section {
+      width: 100%; padding: 64px 16px;
+      background: rgba(255,255,255,.55);
+      border-radius: 24px;
+    }
+    .how-section h2 {
       text-align: center;
-      font-size: 1.55rem;
-      font-weight: 800;
-      color: #1a1a1a;
-      margin: 0 0 28px;
-      letter-spacing: -0.02em;
+      font-size: clamp(1.4rem, 3vw, 1.9rem);
+      font-weight: 800; color: #0f172a;
+      letter-spacing: -0.02em; margin: 0 0 48px;
     }
-    .compare-grid {
+    .how-steps {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px; position: relative;
     }
-    .compare-col {
-      border-radius: 16px;
-      padding: 28px 28px 24px;
-      background: #fff;
+    .how-step {
+      background: #fff; border-radius: 18px;
+      border: 1px solid #e2e8f0;
+      padding: 32px 28px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.06);
+      display: flex; flex-direction: column;
+      align-items: flex-start; gap: 16px;
+      position: relative;
     }
-    .compare-col-us {
-      border: 2px solid #22c55e;
-      background: #f0fdf4;
+    .how-step-num {
+      width: 42px; height: 42px; border-radius: 12px;
+      background: linear-gradient(135deg, #059669, #10b981);
+      color: #fff; font-size: 1.1rem; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 12px rgba(5,150,105,.3);
+      flex-shrink: 0;
     }
-    .compare-col-them {
-      border: 2px solid #ef4444;
-      background: #fef2f2;
+    .how-step-icon {
+      font-size: 2rem; line-height: 1;
     }
+    .how-step h3 {
+      font-size: 1.05rem; font-weight: 700;
+      color: #0f172a; margin: 0; line-height: 1.3;
+    }
+    .how-step p {
+      font-size: 0.9rem; color: #64748b;
+      line-height: 1.6; margin: 0;
+    }
+    .how-connector {
+      display: none;
+    }
+
+    /* ── Section heading shared ── */
+    .section-heading {
+      text-align: center;
+      font-size: clamp(1.4rem, 3vw, 1.9rem);
+      font-weight: 800; color: #0f172a;
+      letter-spacing: -0.02em; margin: 0 0 8px;
+    }
+    .section-sub {
+      text-align: center; color: #64748b;
+      font-size: 1rem; margin: 0 0 36px;
+    }
+
+    /* ── Pricing wrapper ── */
+    .pricing-section { width: 100%; }
+
+    /* ── Comparison Section ── */
+    .compare-section { width: 100%; margin: 56px 0 0; }
+    .compare-section h2 {
+      text-align: center; font-size: 1.55rem; font-weight: 800;
+      color: #1a1a1a; margin: 0 0 28px; letter-spacing: -0.02em;
+    }
+    .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .compare-col { border-radius: 16px; padding: 28px 28px 24px; background: #fff; }
+    .compare-col-us   { border: 2px solid #22c55e; background: #f0fdf4; }
+    .compare-col-them { border: 2px solid #ef4444; background: #fef2f2; }
     .compare-col-header {
-      font-size: 1rem;
-      font-weight: 700;
-      margin-bottom: 18px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      font-size: 1rem; font-weight: 700; margin-bottom: 18px;
+      display: flex; align-items: center; gap: 8px;
     }
     .compare-col-us .compare-col-header   { color: #15803d; }
     .compare-col-them .compare-col-header { color: #b91c1c; }
-    .compare-list {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
+    .compare-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
     .compare-list li {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      font-size: 0.92rem;
-      color: #111827;
-      line-height: 1.4;
+      display: flex; align-items: flex-start; gap: 10px;
+      font-size: 0.92rem; color: #111827; line-height: 1.4;
     }
     .cmp-icon {
-      flex-shrink: 0;
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.75rem;
-      font-weight: 800;
-      margin-top: 1px;
+      flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; font-weight: 800; margin-top: 1px;
     }
     .cmp-check { background: #22c55e; color: #fff; }
     .cmp-x     { background: #ef4444; color: #fff; }
 
     /* ── FAQ Section ── */
-    .faq-section {
-      width: 100%;
-      margin: 56px 0 0;
-    }
+    .faq-section { width: 100%; margin: 56px 0 0; }
     .faq-section h2 {
-      text-align: center;
-      font-size: 1.55rem;
-      font-weight: 800;
-      color: #1a1a1a;
-      margin: 0 0 28px;
-      letter-spacing: -0.02em;
+      text-align: center; font-size: 1.55rem; font-weight: 800;
+      color: #1a1a1a; margin: 0 0 28px; letter-spacing: -0.02em;
     }
-    .faq-list {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
+    .faq-list { display: flex; flex-direction: column; gap: 10px; }
     .faq-item {
-      background: #fff;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      overflow: hidden;
+      background: #fff; border: 1px solid #e2e8f0;
+      border-radius: 12px; overflow: hidden;
     }
     .faq-question {
-      width: 100%;
-      text-align: left;
-      background: none;
-      border: none;
-      padding: 18px 22px;
-      font-size: 0.97rem;
-      font-weight: 600;
-      color: #111827;
-      cursor: pointer;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      font-family: inherit;
+      width: 100%; text-align: left; background: none; border: none;
+      padding: 18px 22px; font-size: 0.97rem; font-weight: 600;
+      color: #111827; cursor: pointer; display: flex;
+      justify-content: space-between; align-items: center;
+      gap: 12px; font-family: inherit;
     }
-    .faq-question:hover { color: #2563eb; }
-    .faq-chevron {
-      flex-shrink: 0;
-      font-size: 0.8rem;
-      color: #6b7280;
-      transition: transform 0.2s;
-    }
+    .faq-question:hover { color: #059669; }
+    .faq-chevron { flex-shrink: 0; font-size: 0.8rem; color: #6b7280; transition: transform 0.2s; }
     .faq-item.open .faq-chevron { transform: rotate(180deg); }
-    .faq-answer {
-      display: none;
-      padding: 0 22px 18px;
-      font-size: 0.9rem;
-      color: #374151;
-      line-height: 1.65;
-    }
+    .faq-answer { display: none; padding: 0 22px 18px; font-size: 0.9rem; color: #374151; line-height: 1.65; }
     .faq-item.open .faq-answer { display: block; }
 
-    @media (max-width: 640px) {
+    /* ── Responsive ── */
+    @media (max-width: 760px) {
+      .how-steps { grid-template-columns: 1fr; }
       .compare-grid { grid-template-columns: 1fr; }
     }
-    .sub-login-btn {
-      position: fixed;
-      top: 20px;
-      right: 24px;
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: #64748b;
-      padding: 8px 16px;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      background: #fff;
-      white-space: nowrap;
-      z-index: 100;
-      box-shadow: 0 1px 4px rgba(0,0,0,.06);
-      cursor: pointer;
-      font-family: inherit;
-      transition: color .15s, border-color .15s;
+    @media (max-width: 640px) {
+      .hero { padding: 52px 16px 48px; }
+      .hero-btns { flex-direction: column; align-items: center; }
+      .hero-btn-primary, .hero-btn-secondary { width: 100%; max-width: 320px; }
     }
-    .sub-login-btn:hover { color: #0f172a; border-color: #94a3b8; }
   </style>
 </head>
 <body class="sub-body">
@@ -173,116 +225,158 @@
     <span class="sub-title">CashCoach<span class="accent">AI</span></span>
   </div>
 
-  <!-- Header -->
-  <div class="sub-header">
-    <div class="trial-badge">🎉 7-Day Free Trial on All Plans — No charge until day 8</div>
-    <h1 class="sub-headline">Choose Your Plan</h1>
-    <p class="sub-tagline">Start free, cancel anytime. Pick the plan that fits your goals.</p>
+  <!-- ══ HERO ══ -->
+  <div class="hero">
+    <div class="hero-eyebrow">✨ AI-powered personal finance</div>
+    <h1>Your Personal<br><span class="hero-accent">AI Financial Coach</span></h1>
+    <p class="hero-sub">Tell us your income and expenses — we'll build your complete budget plan in seconds.</p>
+    <div class="hero-btns">
+      <button class="hero-btn-secondary" onclick="startDemo()">👀 See How It Works</button>
+      <button class="hero-btn-primary" onclick="document.getElementById('pricing').scrollIntoView({behavior:'smooth'})">Start Free Trial →</button>
+    </div>
+    <div class="hero-trust">
+      <span>🎉 7-day free trial</span>
+      <span>🔒 No bank access needed</span>
+      <span>✕ Cancel anytime</span>
+    </div>
   </div>
 
-  <!-- Plans -->
-  <div class="plans-grid plans-grid-3">
+  <!-- ══ HOW IT WORKS ══ -->
+  <div class="how-section" id="how-it-works">
+    <h2>How it works</h2>
+    <div class="how-steps">
 
-    <!-- Basic -->
-    <div class="plan-card">
-      <div class="plan-tier">Basic</div>
-      <div class="plan-price-row">
-        <span class="plan-price">$9.99</span>
-        <span class="plan-period">/mo</span>
+      <div class="how-step">
+        <div class="how-step-num">1</div>
+        <div class="how-step-icon">📋</div>
+        <h3>Enter your income and expenses</h3>
+        <p>Tell us your monthly take-home pay, your fixed bills, and your regular spending habits. Takes about 2 minutes.</p>
       </div>
-      <p class="plan-after">after free trial · cancel anytime</p>
-      <ul class="plan-features">
-        <li><span class="feat-check feat-check-gray">✓</span> Personalized AI budget plan</li>
-        <li><span class="feat-check feat-check-gray">✓</span> Financial health score (1–100)</li>
-        <li><span class="feat-check feat-check-gray">✓</span> Monthly expense tracker</li>
-        <li><span class="feat-check feat-check-gray">✓</span> AI advisor (25 msg/month)</li>
-        <li><span class="feat-check feat-check-gray">✓</span> Savings projections &amp; tips</li>
-        <li class="feat-absent">✕ Unlimited AI conversations</li>
-        <li class="feat-absent">✕ Priority support</li>
-        <li class="feat-absent">✕ Advanced savings goals</li>
-        <li class="feat-absent">✕ Monthly financial report</li>
-        <li class="feat-absent">✕ Investor Hub</li>
-      </ul>
-      <button class="plan-btn plan-btn-basic" id="basicBtn" onclick="startTrial('basic')">
-        Start Free Trial →
-      </button>
-      <p class="plan-note">No charges for 7 days</p>
-    </div>
 
-    <!-- Pro — Most Popular -->
-    <div class="plan-card plan-card-pro">
-      <div class="plan-popular-badge">⭐ Most Popular</div>
-      <div class="plan-tier plan-tier-pro">Pro</div>
-      <div class="plan-price-row">
-        <span class="plan-price plan-price-pro">$19.99</span>
-        <span class="plan-period">/mo</span>
+      <div class="how-step">
+        <div class="how-step-num">2</div>
+        <div class="how-step-icon">📊</div>
+        <h3>Get your personalized budget plan and financial health score</h3>
+        <p>Our AI instantly builds a custom budget, scores your financial health from 1–100, and shows you exactly where your money should go.</p>
       </div>
-      <p class="plan-after">after free trial · cancel anytime</p>
-      <ul class="plan-features">
-        <li><span class="feat-check">✓</span> Everything in Basic</li>
-        <li><span class="feat-check">✓</span> <strong>Unlimited</strong> AI advisor conversations</li>
-        <li><span class="feat-check">✓</span> Priority support</li>
-        <li><span class="feat-check">✓</span> Advanced savings goals tracker</li>
-        <li><span class="feat-check">✓</span> Monthly financial report</li>
-        <li class="feat-absent">✕ Daily market news</li>
-        <li class="feat-absent">✕ Investing education</li>
-        <li class="feat-absent">✕ Portfolio tracker</li>
-        <li class="feat-absent">✕ Compound growth calculator</li>
-        <li class="feat-absent">✕ AI investing coach</li>
-      </ul>
-      <button class="plan-btn plan-btn-pro" id="proBtn" onclick="startTrial('pro')">
-        Start Pro Trial →
-      </button>
-      <p class="plan-note plan-note-pro">No charges for 7 days</p>
-    </div>
 
-    <!-- Investor — Best Value -->
-    <div class="plan-card plan-card-investor">
-      <div class="plan-popular-badge plan-popular-badge-gold">💎 Best Value</div>
-      <div class="plan-tier plan-tier-investor">Investor</div>
-      <div class="plan-price-row">
-        <span class="plan-price plan-price-investor">$39.99</span>
-        <span class="plan-period">/mo</span>
+      <div class="how-step">
+        <div class="how-step-num">3</div>
+        <div class="how-step-icon">💬</div>
+        <h3>Chat with your AI advisor anytime</h3>
+        <p>Ask anything — "how do I pay off debt faster?", "can I afford this?", "where should I cut spending?" — and get answers tailored to your exact situation.</p>
       </div>
-      <p class="plan-after">after free trial · cancel anytime</p>
-      <ul class="plan-features">
-        <li><span class="feat-check feat-check-gold">✓</span> Everything in Pro</li>
-        <li><span class="feat-check feat-check-gold">✓</span> Daily market news summary</li>
-        <li><span class="feat-check feat-check-gold">✓</span> Investing education library</li>
-        <li><span class="feat-check feat-check-gold">✓</span> Portfolio tracker (stocks &amp; ETFs)</li>
-        <li><span class="feat-check feat-check-gold">✓</span> Compound growth calculator</li>
-        <li><span class="feat-check feat-check-gold">✓</span> AI investing coach chat</li>
-        <li><span class="feat-check feat-check-gold">✓</span> Unlimited AI advisor conversations</li>
-        <li><span class="feat-check feat-check-gold">✓</span> Priority support</li>
-        <li><span class="feat-check feat-check-gold">✓</span> Advanced savings goals tracker</li>
-        <li><span class="feat-check feat-check-gold">✓</span> Monthly financial report</li>
-      </ul>
-      <button class="plan-btn plan-btn-investor" id="investorBtn" onclick="startTrial('investor')">
-        Start Investor Trial →
-      </button>
-      <p class="plan-note plan-note-investor">No charges for 7 days</p>
-    </div>
 
+    </div>
   </div>
 
-  <!-- Error -->
-  <div class="sub-error" id="subError"></div>
+  <!-- ══ PRICING ══ -->
+  <div class="pricing-section" id="pricing">
+    <h2 class="section-heading">Choose Your Plan</h2>
+    <p class="section-sub">Start free for 7 days. No charge until day 8. Cancel anytime.</p>
 
-  <!-- Demo -->
-  <div class="sub-divider">or</div>
-  <button class="sub-btn-demo" onclick="startDemo()">👀 See a demo first</button>
-  <p class="sub-note" style="text-align:center">Explore with sample data — no account needed</p>
+    <div class="plans-grid plans-grid-3">
 
-  <!-- Comparison Section -->
+      <!-- Basic -->
+      <div class="plan-card">
+        <div class="plan-tier">Basic</div>
+        <div class="plan-price-row">
+          <span class="plan-price">$9.99</span>
+          <span class="plan-period">/mo</span>
+        </div>
+        <p class="plan-after">after free trial · cancel anytime</p>
+        <ul class="plan-features">
+          <li><span class="feat-check feat-check-gray">✓</span> Personalized AI budget plan</li>
+          <li><span class="feat-check feat-check-gray">✓</span> Financial health score (1–100)</li>
+          <li><span class="feat-check feat-check-gray">✓</span> Monthly expense tracker</li>
+          <li><span class="feat-check feat-check-gray">✓</span> AI advisor (25 msg/month)</li>
+          <li><span class="feat-check feat-check-gray">✓</span> Savings projections &amp; tips</li>
+          <li class="feat-absent">✕ Unlimited AI conversations</li>
+          <li class="feat-absent">✕ Priority support</li>
+          <li class="feat-absent">✕ Advanced savings goals</li>
+          <li class="feat-absent">✕ Monthly financial report</li>
+          <li class="feat-absent">✕ Investor Hub</li>
+        </ul>
+        <button class="plan-btn plan-btn-basic" id="basicBtn" onclick="startTrial('basic')">
+          Start Free Trial →
+        </button>
+        <p class="plan-note">No charges for 7 days</p>
+      </div>
+
+      <!-- Pro — Most Popular -->
+      <div class="plan-card plan-card-pro">
+        <div class="plan-popular-badge">⭐ Most Popular</div>
+        <div class="plan-tier plan-tier-pro">Pro</div>
+        <div class="plan-price-row">
+          <span class="plan-price plan-price-pro">$19.99</span>
+          <span class="plan-period">/mo</span>
+        </div>
+        <p class="plan-after">after free trial · cancel anytime</p>
+        <ul class="plan-features">
+          <li><span class="feat-check">✓</span> Everything in Basic</li>
+          <li><span class="feat-check">✓</span> <strong>Unlimited</strong> AI advisor conversations</li>
+          <li><span class="feat-check">✓</span> Priority support</li>
+          <li><span class="feat-check">✓</span> Advanced savings goals tracker</li>
+          <li><span class="feat-check">✓</span> Monthly financial report</li>
+          <li class="feat-absent">✕ Daily market news</li>
+          <li class="feat-absent">✕ Investing education</li>
+          <li class="feat-absent">✕ Portfolio tracker</li>
+          <li class="feat-absent">✕ Compound growth calculator</li>
+          <li class="feat-absent">✕ AI investing coach</li>
+        </ul>
+        <button class="plan-btn plan-btn-pro" id="proBtn" onclick="startTrial('pro')">
+          Start Pro Trial →
+        </button>
+        <p class="plan-note plan-note-pro">No charges for 7 days</p>
+      </div>
+
+      <!-- Investor — Best Value -->
+      <div class="plan-card plan-card-investor">
+        <div class="plan-popular-badge plan-popular-badge-gold">💎 Best Value</div>
+        <div class="plan-tier plan-tier-investor">Investor</div>
+        <div class="plan-price-row">
+          <span class="plan-price plan-price-investor">$39.99</span>
+          <span class="plan-period">/mo</span>
+        </div>
+        <p class="plan-after">after free trial · cancel anytime</p>
+        <ul class="plan-features">
+          <li><span class="feat-check feat-check-gold">✓</span> Everything in Pro</li>
+          <li><span class="feat-check feat-check-gold">✓</span> Daily market news summary</li>
+          <li><span class="feat-check feat-check-gold">✓</span> Investing education library</li>
+          <li><span class="feat-check feat-check-gold">✓</span> Portfolio tracker (stocks &amp; ETFs)</li>
+          <li><span class="feat-check feat-check-gold">✓</span> Compound growth calculator</li>
+          <li><span class="feat-check feat-check-gold">✓</span> AI investing coach chat</li>
+          <li><span class="feat-check feat-check-gold">✓</span> Unlimited AI advisor conversations</li>
+          <li><span class="feat-check feat-check-gold">✓</span> Priority support</li>
+          <li><span class="feat-check feat-check-gold">✓</span> Advanced savings goals tracker</li>
+          <li><span class="feat-check feat-check-gold">✓</span> Monthly financial report</li>
+        </ul>
+        <button class="plan-btn plan-btn-investor" id="investorBtn" onclick="startTrial('investor')">
+          Start Investor Trial →
+        </button>
+        <p class="plan-note plan-note-investor">No charges for 7 days</p>
+      </div>
+
+    </div>
+
+    <!-- Error -->
+    <div class="sub-error" id="subError"></div>
+  </div>
+
+  <!-- ══ DEMO ══ -->
+  <div style="width:100%;text-align:center;margin-top:8px">
+    <div class="sub-divider">or</div>
+    <button class="sub-btn-demo" onclick="startDemo()">👀 See a demo first</button>
+    <p class="sub-note" style="text-align:center">Explore with sample data — no account needed</p>
+  </div>
+
+  <!-- ══ COMPARISON ══ -->
   <div class="compare-section">
     <h2>Why CashCoachAI beats the rest</h2>
     <div class="compare-grid">
 
-      <!-- CashCoachAI -->
       <div class="compare-col compare-col-us">
-        <div class="compare-col-header">
-          <span>💰</span> CashCoachAI
-        </div>
+        <div class="compare-col-header"><span>💰</span> CashCoachAI</div>
         <ul class="compare-list">
           <li><span class="cmp-icon cmp-check">✓</span> AI that actually talks to you</li>
           <li><span class="cmp-icon cmp-check">✓</span> Personalized budget plan built for you</li>
@@ -293,11 +387,8 @@
         </ul>
       </div>
 
-      <!-- Competitors -->
       <div class="compare-col compare-col-them">
-        <div class="compare-col-header">
-          <span>🏦</span> Everyone else
-        </div>
+        <div class="compare-col-header"><span>🏦</span> Everyone else</div>
         <ul class="compare-list">
           <li><span class="cmp-icon cmp-x">✕</span> No real AI conversation — just static tips</li>
           <li><span class="cmp-icon cmp-x">✕</span> Generic advice that doesn't fit your life</li>
@@ -310,15 +401,14 @@
     </div>
   </div>
 
-  <!-- FAQ Section -->
+  <!-- ══ FAQ ══ -->
   <div class="faq-section">
     <h2>Frequently asked questions</h2>
     <div class="faq-list">
 
       <div class="faq-item">
         <button class="faq-question" onclick="toggleFaq(this)">
-          Can I cancel anytime?
-          <span class="faq-chevron">▼</span>
+          Can I cancel anytime? <span class="faq-chevron">▼</span>
         </button>
         <div class="faq-answer">
           Yes — cancel anytime from your Stripe billing portal with one click. No phone calls, no hoops, no questions asked. Your access continues until the end of your current billing period.
@@ -327,8 +417,7 @@
 
       <div class="faq-item">
         <button class="faq-question" onclick="toggleFaq(this)">
-          Is my financial data safe?
-          <span class="faq-chevron">▼</span>
+          Is my financial data safe? <span class="faq-chevron">▼</span>
         </button>
         <div class="faq-answer">
           Your data is never sold or shared with third parties. The numbers you enter are used only to power your personalized advice within the app. Payments are processed securely by Stripe — we never see or store your card details.
@@ -337,8 +426,7 @@
 
       <div class="faq-item">
         <button class="faq-question" onclick="toggleFaq(this)">
-          What is the difference between the plans?
-          <span class="faq-chevron">▼</span>
+          What is the difference between the plans? <span class="faq-chevron">▼</span>
         </button>
         <div class="faq-answer">
           <strong>Basic ($9.99/mo)</strong> — Personalized budget plan, financial health score, expense tracker, and 25 AI advisor messages per month.<br><br>
@@ -349,8 +437,7 @@
 
       <div class="faq-item">
         <button class="faq-question" onclick="toggleFaq(this)">
-          How does the 7-day free trial work?
-          <span class="faq-chevron">▼</span>
+          How does the 7-day free trial work? <span class="faq-chevron">▼</span>
         </button>
         <div class="faq-answer">
           When you sign up you get 7 days of full access at no cost. Your card is not charged until day 8. You can cancel any time during the trial and you will never be billed. No hidden fees.
@@ -359,8 +446,7 @@
 
       <div class="faq-item">
         <button class="faq-question" onclick="toggleFaq(this)">
-          Can the AI give me real financial advice?
-          <span class="faq-chevron">▼</span>
+          Can the AI give me real financial advice? <span class="faq-chevron">▼</span>
         </button>
         <div class="faq-answer">
           CashCoachAI provides personalized financial guidance and education based on the information you share — budgeting strategies, savings tips, and investment concepts. It is not a licensed financial advisor. For major financial decisions, we recommend consulting a certified professional.
@@ -369,8 +455,7 @@
 
       <div class="faq-item">
         <button class="faq-question" onclick="toggleFaq(this)">
-          Do I need to connect my bank account?
-          <span class="faq-chevron">▼</span>
+          Do I need to connect my bank account? <span class="faq-chevron">▼</span>
         </button>
         <div class="faq-answer">
           No. CashCoachAI does not require bank account access. You simply enter your income and expenses manually, and the AI works from there. This keeps things simple and your banking credentials completely private.
@@ -427,7 +512,7 @@ if (new URLSearchParams(window.location.search).get('error')) {
 }
 
 function toggleFaq(btn) {
-  const item = btn.closest('.faq-item');
+  const item   = btn.closest('.faq-item');
   const isOpen = item.classList.contains('open');
   document.querySelectorAll('.faq-item.open').forEach(el => el.classList.remove('open'));
   if (!isOpen) item.classList.add('open');
