@@ -234,6 +234,24 @@ PLAN_PRICES = {'basic': 9.99, 'pro': 19.99, 'investor': 39.99}
 BAD_STATUSES = {'canceled', 'cancelled', 'past_due', 'unpaid', 'incomplete_expired'}
 
 
+@app.route('/admin/subscriptions')
+def admin_subscriptions():
+    if not session.get('admin_auth'):
+        return redirect('/admin')
+    conn = get_db()
+    rows = conn.execute(
+        'SELECT id, email, token, status, plan, created_at FROM subscriptions ORDER BY id'
+    ).fetchall()
+    conn.close()
+    html = '<h2 style="font-family:monospace;padding:20px">Subscriptions</h2>'
+    html += '<table border="1" cellpadding="8" style="font-family:monospace;border-collapse:collapse;margin:0 20px">'
+    html += '<tr><th>id</th><th>email</th><th>token</th><th>status</th><th>plan</th><th>created_at</th></tr>'
+    for r in rows:
+        html += f'<tr><td>{r["id"]}</td><td>{r["email"]}</td><td>{r["token"]}</td><td>{r["status"]}</td><td>{r["plan"]}</td><td>{r["created_at"]}</td></tr>'
+    html += '</table>'
+    return html
+
+
 @app.route('/admin/dashboard')
 def admin_dashboard():
     if not session.get('admin_auth'):
