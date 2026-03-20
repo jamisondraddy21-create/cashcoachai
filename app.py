@@ -252,6 +252,25 @@ def admin_subscriptions():
     return html
 
 
+@app.route('/admin/cleanup-dupes')
+def admin_cleanup_dupes():
+    if not session.get('admin_auth'):
+        return redirect('/admin')
+    conn = get_db()
+    conn.execute('DELETE FROM user_data WHERE subscription_id IN (1, 2)')
+    conn.execute('DELETE FROM subscriptions WHERE id IN (1, 2)')
+    conn.commit()
+    rows = conn.execute('SELECT id, email, status, plan, created_at FROM subscriptions ORDER BY id').fetchall()
+    conn.close()
+    html = '<h2 style="font-family:monospace;padding:20px">Done. Remaining subscriptions:</h2>'
+    html += '<table border="1" cellpadding="8" style="font-family:monospace;border-collapse:collapse;margin:0 20px">'
+    html += '<tr><th>id</th><th>email</th><th>status</th><th>plan</th><th>created_at</th></tr>'
+    for r in rows:
+        html += f'<tr><td>{r["id"]}</td><td>{r["email"]}</td><td>{r["status"]}</td><td>{r["plan"]}</td><td>{r["created_at"]}</td></tr>'
+    html += '</table>'
+    return html
+
+
 @app.route('/admin/dashboard')
 def admin_dashboard():
     if not session.get('admin_auth'):
