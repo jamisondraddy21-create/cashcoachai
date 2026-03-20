@@ -35,6 +35,18 @@ const EMOJIS = {
 };
 const emoji = cat => EMOJIS[cat] || '📦';
 
+function stripMarkdown(text) {
+  return text
+    .replace(/#{1,6}\s+/g, '')           // ## headers
+    .replace(/\*\*(.+?)\*\*/g, '$1')     // **bold**
+    .replace(/\*(.+?)\*/g, '$1')         // *italic*
+    .replace(/`(.+?)`/g, '$1')           // `code`
+    .replace(/^\s*[-*+]\s+/gm, '')       // bullet points
+    .replace(/^\s*\d+\.\s+/gm, '')       // numbered lists
+    .replace(/\n{3,}/g, '\n\n')          // collapse excess blank lines
+    .trim();
+}
+
 let budgetChart       = null;
 let spendingChart     = null;
 let goalChart         = null;
@@ -886,7 +898,7 @@ async function sendMessage() {
         if (raw === '[DONE]') break;
         try {
           const d = JSON.parse(raw);
-          if (d.text) { full += d.text; bubbleText.textContent = full; scrollChat(); }
+          if (d.text) { full += d.text; bubbleText.textContent = stripMarkdown(full); scrollChat(); }
         } catch (_) {}
       }
     }
