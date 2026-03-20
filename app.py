@@ -445,6 +445,45 @@ def debug_session():
     })
 
 
+@app.route('/debug/userdata')
+def debug_userdata():
+    token = request.cookies.get('cca_token', '')
+    if not token:
+        return jsonify({'error': 'No cca_token cookie found'}), 401
+
+    conn = get_db()
+    user = conn.execute(
+        'SELECT id, email, plan, status FROM subscriptions WHERE token=%s', (token,)
+    ).fetchone()
+    if not user:
+        conn.close()
+        return jsonify({'error': 'No subscription row found for this token', 'token': token}), 404
+
+    row = conn.execute(
+        'SELECT * FROM user_data WHERE subscription_id=%s', (user['id'],)
+    ).fetchone()
+    conn.close()
+
+    return jsonify({
+        'subscription': dict(user),
+        'user_data':    dict(row) if row else None,
+    })
+
+
+@app.route('/debug/alldata')
+def debug_alldata():
+    conn  = get_db()
+    rows  = conn.execute('SELECT * FROM user_data ORDER BY id').fetchall()
+    subs  = conn.execute('SELECT id, email, plan, status FROM subscriptions ORDER BY id').fetchall()
+    conn.close()
+
+    return jsonify({
+        'user_data_rows': [dict(r) for r in rows],
+        'user_data_count': len(rows),
+        'subscriptions': [dict(s) for s in subs],
+    })
+
+
 @app.route('/api/check-subscription')
 def check_subscription():
     # Dev mode: if Stripe isn't configured, allow access but still respect plan from DB token
