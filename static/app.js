@@ -61,29 +61,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('expenseDate').value = new Date().toISOString().split('T')[0];
 
   if (window.CCA_LOGGED_IN) {
-    // Always hit the server first — server is the source of truth for logged-in users.
-    // Only fall back to localStorage if the server returns nothing.
+    // Wipe localStorage first so no stale demo or cached data can bleed through.
+    localStorage.removeItem('cca_v1');
+    localStorage.removeItem('cca_demo');
+
+    // Fetch all data fresh from the server — this is the only source of truth.
     const serverData = await fetchServerData();
-    if (serverData) {
-      state.income     = serverData.income      || 0;
-      state.bills      = serverData.bills       || [];
-      state.habits     = serverData.habits      || [];
-      state.budgetPlan = serverData.budget_plan || null;
-      // Expenses, portfolio, and chat are localStorage-only — preserve them
-      try {
-        const ls = localStorage.getItem('cca_v1');
-        if (ls) {
-          const saved = JSON.parse(ls);
-          state.expenses    = saved.expenses    || [];
-          state.portfolio   = saved.portfolio   || [];
-          state.chatHistory = saved.chatHistory || [];
-        }
-      } catch (_) {}
-      try { localStorage.setItem('cca_v1', JSON.stringify(state)); } catch (_) {}
-    } else {
-      // Server returned nothing (new account, error) — fall back to localStorage
-      loadState();
-    }
+    state.income     = serverData ? (serverData.income      || 0)    : 0;
+    state.bills      = serverData ? (serverData.bills       || [])   : [];
+    state.habits     = serverData ? (serverData.habits      || [])   : [];
+    state.budgetPlan = serverData ? (serverData.budget_plan || null) : null;
+
+    // Write the fresh server data back to localStorage as a write cache.
+    try { localStorage.setItem('cca_v1', JSON.stringify(state)); } catch (_) {}
   } else {
     loadState();
   }
