@@ -57,20 +57,47 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Belt-and-suspenders: remove investor elements if window.CCA_PLAN isn't investor
   applyPlanGating();
 
-  // Load from localStorage first, then overlay with server data if logged in
-  loadState();
-  if (window.CCA_LOGGED_IN) {
-    await loadDataFromServer();
-  }
-
   // Set default date
   document.getElementById('expenseDate').value = new Date().toISOString().split('T')[0];
+
+  if (window.CCA_LOGGED_IN) {
+    // Always hit the server first — server is the source of truth for logged-in users.
+    // Only fall back to localStorage if the server returns nothing.
+    const serverData = await fetchServerData();
+    if (serverData) {
+      state.income     = serverData.income      || 0;
+      state.bills      = serverData.bills       || [];
+      state.habits     = serverData.habits      || [];
+      state.budgetPlan = serverData.budget_plan || null;
+      // Expenses, portfolio, and chat are localStorage-only — preserve them
+      try {
+        const ls = localStorage.getItem('cca_v1');
+        if (ls) {
+          const saved = JSON.parse(ls);
+          state.expenses    = saved.expenses    || [];
+          state.portfolio   = saved.portfolio   || [];
+          state.chatHistory = saved.chatHistory || [];
+        }
+      } catch (_) {}
+      try { localStorage.setItem('cca_v1', JSON.stringify(state)); } catch (_) {}
+    } else {
+      // Server returned nothing (new account, error) — fall back to localStorage
+      loadState();
+    }
+  } else {
+    loadState();
+  }
 
   renderHabitChips();
 
   if (state.budgetPlan) {
     showNavTabs();
-    navigate('dashboard');
+    // Show the dashboard view directly — do not go through navigate() which
+    // has guards and renders into potentially zero-size containers on mobile.
+    showView('dashboard');
+    document.querySelectorAll('.nav-tab').forEach(t =>
+      t.classList.toggle('active', t.dataset.view === 'dashboard')
+    );
     renderDashboard();
   } else {
     document.getElementById('navTabs').style.visibility = 'hidden';
@@ -405,20 +432,27 @@ async function saveDataToServer() {
   } catch (_) {}
 }
 
-async function loadDataFromServer() {
+// Returns the raw server data object, or null — does not touch state.
+async function fetchServerData() {
   try {
-    const url = window.CCA_TOKEN ? `/api/load-data?token=${window.CCA_TOKEN}` : '/api/load-data';
+    const url  = window.CCA_TOKEN ? `/api/load-data?token=${window.CCA_TOKEN}` : '/api/load-data';
     const res  = await fetch(url, { credentials: 'include' });
-    const data = await res.json();
-    if (data.data) {
-      // Server data overrides localStorage — source of truth for logged-in users
-      state.income     = data.data.income     || state.income;
-      state.bills      = data.data.bills?.length  ? data.data.bills  : state.bills;
-      state.habits     = data.data.habits?.length ? data.data.habits : state.habits;
-      state.budgetPlan = data.data.budget_plan || state.budgetPlan;
-      saveState();  // sync back to localStorage
-    }
-  } catch (_) {}
+    const json = await res.json();
+    return json.data || null;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function loadDataFromServer() {
+  const serverData = await fetchServerData();
+  if (serverData) {
+    state.income     = serverData.income      || state.income;
+    state.bills      = serverData.bills?.length  ? serverData.bills  : state.bills;
+    state.habits     = serverData.habits?.length ? serverData.habits : state.habits;
+    state.budgetPlan = serverData.budget_plan || state.budgetPlan;
+    saveState();
+  }
 }
 
 function resetApp() {
