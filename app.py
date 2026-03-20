@@ -96,14 +96,11 @@ def init_db():
     conn.commit()
     # Migrations for older DB schemas
     for migration in [
-        "ALTER TABLE subscriptions ADD COLUMN plan TEXT DEFAULT 'basic'",
-        "ALTER TABLE subscriptions ADD COLUMN password_hash TEXT",
+        "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS plan TEXT DEFAULT 'basic'",
+        "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS password_hash TEXT",
     ]:
-        try:
-            conn.execute(migration)
-            conn.commit()
-        except Exception:
-            conn._conn.rollback()  # Must rollback failed transaction in PostgreSQL
+        conn.execute(migration)
+        conn.commit()
     conn.close()
 
 
