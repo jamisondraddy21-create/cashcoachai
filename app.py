@@ -42,13 +42,13 @@ DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://localhost/cashcoach'
 
 
 class _PgConn:
-    """Thin wrapper to give psycopg2 connections a sqlite3-like interface."""
+    """Thin wrapper to give psycopg2 connections a dict-cursor interface."""
     def __init__(self, conn):
         self._conn = conn
         self._cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     def execute(self, sql, params=None):
-        self._cur.execute(sql.replace('?', '%s'), params or ())
+        self._cur.execute(sql, params or ())
         return self._cur
 
     def commit(self):
@@ -114,7 +114,7 @@ def _get_or_create_price(settings_key, env_key, unit_amount, plan_name, plan_des
         return env_id
 
     conn = get_db()
-    row = conn.execute('SELECT value FROM settings WHERE key=?', (settings_key,)).fetchone()
+    row = conn.execute('SELECT value FROM settings WHERE key=%s', (settings_key,)).fetchone()
     conn.close()
     if row:
         return row['value']
@@ -132,7 +132,7 @@ def _get_or_create_price(settings_key, env_key, unit_amount, plan_name, plan_des
         )
         conn = get_db()
         conn.execute(
-            'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value',
+            'INSERT INTO settings (key, value) VALUES (%s, %s) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value',
             (settings_key, price.id)
         )
         conn.commit()
@@ -197,19 +197,19 @@ def admin():
                 email = f'admin-{plan}@cashcoachai.internal'
                 conn  = get_db()
                 row   = conn.execute(
-                    'SELECT token FROM subscriptions WHERE email=?', (email,)
+                    'SELECT token FROM subscriptions WHERE email=%s', (email,)
                 ).fetchone()
 
                 if row:
                     token = row['token']
                     conn.execute(
-                        "UPDATE subscriptions SET plan=?, status='active', updated_at=CURRENT_TIMESTAMP WHERE email=?",
+                        "UPDATE subscriptions SET plan=%s, status='active', updated_at=CURRENT_TIMESTAMP WHERE email=%s",
                         (plan, email)
                     )
                 else:
                     token = str(uuid.uuid4())
                     conn.execute(
-                        "INSERT INTO subscriptions (token, email, status, plan) VALUES (?, ?, 'active', ?)",
+                        "INSERT INTO subscriptions (token, email, status, plan) VALUES (%s, %s, 'active', %s)",
                         (token, email, plan)
                     )
                 conn.commit()
@@ -393,7 +393,7 @@ def subscribe_success():
 
         conn     = get_db()
         existing = conn.execute(
-            'SELECT token FROM subscriptions WHERE stripe_customer_id = ?',
+            'SELECT token FROM subscriptions WHERE stripe_customer_id = %s',
             (customer_id,)
         ).fetchone()
 
@@ -401,8 +401,8 @@ def subscribe_success():
             token = existing['token']
             conn.execute(
                 '''UPDATE subscriptions
-                   SET stripe_subscription_id=?, email=?, status=?, plan=?, updated_at=CURRENT_TIMESTAMP
-                   WHERE stripe_customer_id=?''',
+                   SET stripe_subscription_id=%s, email=%s, status=%s, plan=%s, updated_at=CURRENT_TIMESTAMP
+                   WHERE stripe_customer_id=%s''',
                 (subscription_id, email, status, plan, customer_id)
             )
         else:
@@ -411,7 +411,7 @@ def subscribe_success():
             conn.execute(
                 '''INSERT INTO subscriptions
                    (token, stripe_customer_id, stripe_subscription_id, email, status, plan)
-                   VALUES (?, ?, ?, ?, ?, ?)''',
+                   VALUES (%s, %s, %s, %s, %s, %s)''',
                 (token, customer_id, subscription_id, email, status, plan)
             )
         conn.commit()
@@ -453,7 +453,7 @@ def check_subscription():
         plan  = 'basic'
         if token:
             conn = get_db()
-            row  = conn.execute('SELECT plan FROM subscriptions WHERE token=?', (token,)).fetchone()
+            row  = conn.execute('SELECT plan FROM subscriptions WHERE token=%s', (token,)).fetchone()
             conn.close()
             if row and row['plan']:
                 plan = row['plan']
@@ -497,8 +497,8 @@ def stripe_webhook():
 
         conn = get_db()
         conn.execute(
-            '''UPDATE subscriptions SET status=?, updated_at=CURRENT_TIMESTAMP
-               WHERE stripe_subscription_id=?''',
+            '''UPDATE subscriptions SET status=%s, updated_at=CURRENT_TIMESTAMP
+               WHERE stripe_subscription_id=%s''',
             (status, subscription_id)
         )
         conn.commit()
@@ -755,7 +755,7 @@ def api_login():
     row  = conn.execute(
         '''SELECT id, token, plan, status, password_hash
            FROM subscriptions
-           WHERE lower(email)=? AND password_hash IS NOT NULL''',
+           WHERE lower(email)=%s AND password_hash IS NOT NULL''',
         (email,)
     ).fetchone()
     conn.close()
@@ -786,7 +786,7 @@ def create_password_page():
 
     conn = get_db()
     row  = conn.execute(
-        'SELECT id, email, password_hash, plan, status FROM subscriptions WHERE token=?', (token,)
+        'SELECT id, email, password_hash, plan, status FROM subscriptions WHERE token=%s', (token,)
     ).fetchone()
     conn.close()
 
@@ -808,7 +808,7 @@ def setup_password_page():
 
     conn = get_db()
     row  = conn.execute(
-        'SELECT id, email, password_hash, plan, status FROM subscriptions WHERE token=?', (token,)
+        'SELECT id, email, password_hash, plan, status FROM subscriptions WHERE token=%s', (token,)
     ).fetchone()
     conn.close()
 
@@ -836,7 +836,7 @@ def api_set_password():
 
     conn = get_db()
     row  = conn.execute(
-        'SELECT id, email, plan, status FROM subscriptions WHERE token=?', (token,)
+        'SELECT id, email, plan, status FROM subscriptions WHERE token=%s', (token,)
     ).fetchone()
 
     if not row:
@@ -844,7 +844,7 @@ def api_set_password():
         return jsonify({'error': 'Invalid token.'}), 404
 
     conn.execute(
-        'UPDATE subscriptions SET password_hash=?, updated_at=CURRENT_TIMESTAMP WHERE token=?',
+        'UPDATE subscriptions SET password_hash=%s, updated_at=CURRENT_TIMESTAMP WHERE token=%s',
         (generate_password_hash(password), token)
     )
     conn.commit()
@@ -866,7 +866,7 @@ def save_data():
 
     conn = get_db()
     user = conn.execute(
-        'SELECT id FROM subscriptions WHERE token=?', (token,)
+        'SELECT id FROM subscriptions WHERE token=%s', (token,)
     ).fetchone()
     conn.close()
     if not user:
@@ -881,7 +881,7 @@ def save_data():
     conn = get_db()
     conn.execute(
         '''INSERT INTO user_data (subscription_id, income, bills, habits, budget_plan)
-           VALUES (?, ?, ?, ?, ?)
+           VALUES (%s, %s, %s, %s, %s)
            ON CONFLICT(subscription_id) DO UPDATE SET
                income=excluded.income, bills=excluded.bills, habits=excluded.habits,
                budget_plan=excluded.budget_plan, updated_at=CURRENT_TIMESTAMP''',
@@ -900,14 +900,14 @@ def load_data():
 
     conn  = get_db()
     user  = conn.execute(
-        'SELECT id FROM subscriptions WHERE token=?', (token,)
+        'SELECT id FROM subscriptions WHERE token=%s', (token,)
     ).fetchone()
     if not user:
         conn.close()
         return jsonify({'data': None})
 
     row = conn.execute(
-        'SELECT * FROM user_data WHERE subscription_id=?', (user['id'],)
+        'SELECT * FROM user_data WHERE subscription_id=%s', (user['id'],)
     ).fetchone()
     conn.close()
 
@@ -947,14 +947,14 @@ def api_change_password():
         return jsonify({'error': 'New password must be at least 8 characters.'}), 400
 
     conn = get_db()
-    row  = conn.execute('SELECT password_hash FROM subscriptions WHERE id=?', (user['id'],)).fetchone()
+    row  = conn.execute('SELECT password_hash FROM subscriptions WHERE id=%s', (user['id'],)).fetchone()
 
     if not row or not check_password_hash(row['password_hash'], current_pass):
         conn.close()
         return jsonify({'error': 'Current password is incorrect.'}), 401
 
     conn.execute(
-        'UPDATE subscriptions SET password_hash=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
+        'UPDATE subscriptions SET password_hash=%s, updated_at=CURRENT_TIMESTAMP WHERE id=%s',
         (generate_password_hash(new_pass), user['id'])
     )
     conn.commit()
@@ -970,7 +970,7 @@ def api_cancel_subscription():
 
     conn = get_db()
     row  = conn.execute(
-        'SELECT stripe_subscription_id FROM subscriptions WHERE id=?', (user['id'],)
+        'SELECT stripe_subscription_id FROM subscriptions WHERE id=%s', (user['id'],)
     ).fetchone()
     conn.close()
 
@@ -984,7 +984,7 @@ def api_cancel_subscription():
 
     conn = get_db()
     conn.execute(
-        "UPDATE subscriptions SET status='canceled', updated_at=CURRENT_TIMESTAMP WHERE id=?",
+        "UPDATE subscriptions SET status='canceled', updated_at=CURRENT_TIMESTAMP WHERE id=%s",
         (user['id'],)
     )
     conn.commit()
@@ -1004,7 +1004,7 @@ def get_current_user(url_token=None):
         return None
     conn = get_db()
     row  = conn.execute(
-        'SELECT id, token, plan, email, status FROM subscriptions WHERE token=?', (token,)
+        'SELECT id, token, plan, email, status FROM subscriptions WHERE token=%s', (token,)
     ).fetchone()
     conn.close()
     if row and row['status'] in ('active', 'trialing'):
@@ -1014,7 +1014,7 @@ def get_current_user(url_token=None):
 
 def _auth_cookie(resp, token):
     """Attach a 30-day cca_token cookie to a response."""
-    resp.set_cookie('cca_token', token, max_age=60*60*24*30, httponly=True, samesite='Lax')
+    resp.set_cookie('cca_token', token, max_age=60*60*24*30, httponly=True, samesite='None', secure=True)
     return resp
 
 
