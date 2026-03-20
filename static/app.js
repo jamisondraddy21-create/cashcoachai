@@ -27,10 +27,10 @@ const DEFAULTS = [
 ];
 
 const EMOJIS = {
-  Housing:'🏠', Transportation:'🚗', Utilities:'💡', Insurance:'🛡️',
-  Subscriptions:'📱', Debt:'💳', Groceries:'🛒', 'Dining Out':'🍕',
+  Housing:'🏠', Transportation:'🚗', Transport:'🚗', Utilities:'💡', Insurance:'🛡️',
+  Subscriptions:'📱', Debt:'💳', Groceries:'🛒', 'Dining Out':'🍕', Food:'🍔',
   Coffee:'☕', Entertainment:'🎬', Clothing:'👕', 'Personal Care':'💄',
-  'Gas / Fuel':'⛽', 'Health/Gym':'💪', Shopping:'🛍️', Travel:'✈️',
+  'Gas / Fuel':'⛽', 'Health/Gym':'💪', Health:'💊', Shopping:'🛍️', Travel:'✈️',
   Savings:'💰', Other:'📦',
 };
 const emoji = cat => EMOJIS[cat] || '📦';
@@ -41,6 +41,10 @@ let goalChart         = null;
 let investChatHistory = [];
 
 // ─── Init ──────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.getElementById('expenseModal').style.display = 'none';
+});
+
 document.addEventListener('DOMContentLoaded', async () => {
   // Save token from URL if present (Stripe/admin redirect) — server already read it for rendering
   const params   = new URLSearchParams(window.location.search);
@@ -57,9 +61,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Belt-and-suspenders: remove investor elements if window.CCA_PLAN isn't investor
   applyPlanGating();
 
-  // Set default date
-  document.getElementById('expenseDate').value = new Date().toISOString().split('T')[0];
-
   if (window.CCA_LOGGED_IN) {
     // Wipe localStorage first so no stale demo or cached data can bleed through.
     localStorage.removeItem('cca_v1');
@@ -71,6 +72,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     state.bills      = serverData ? (serverData.bills       || [])   : [];
     state.habits     = serverData ? (serverData.habits      || [])   : [];
     state.budgetPlan = serverData ? (serverData.budget_plan || null) : null;
+    state.expenses   = serverData ? (serverData.expenses    || [])   : [];
 
     // Write the fresh server data back to localStorage as a write cache.
     try { localStorage.setItem('cca_v1', JSON.stringify(state)); } catch (_) {}
@@ -417,6 +419,7 @@ async function saveDataToServer() {
         bills:       state.bills,
         habits:      state.habits,
         budget_plan: state.budgetPlan,
+        expenses:    state.expenses,
       }),
     });
   } catch (_) {}
@@ -438,9 +441,10 @@ async function loadDataFromServer() {
   const serverData = await fetchServerData();
   if (serverData) {
     state.income     = serverData.income      || state.income;
-    state.bills      = serverData.bills?.length  ? serverData.bills  : state.bills;
-    state.habits     = serverData.habits?.length ? serverData.habits : state.habits;
+    state.bills      = serverData.bills?.length    ? serverData.bills    : state.bills;
+    state.habits     = serverData.habits?.length   ? serverData.habits   : state.habits;
     state.budgetPlan = serverData.budget_plan || state.budgetPlan;
+    state.expenses   = serverData.expenses?.length ? serverData.expenses : state.expenses;
     saveState();
   }
 }
@@ -726,13 +730,22 @@ function renderTips(p) {
     </div>`).join('');
 }
 
-function populateCatSelect(p) {
-  const sel = document.getElementById('expenseCat');
-  sel.innerHTML = '<option value="">Category…</option>' +
-    (p.allocations||[]).map(a => `<option value="${a.category}">${emoji(a.category)} ${a.category}</option>`).join('');
-}
+function populateCatSelect(_p) { /* categories are now hardcoded in the expense modal */ }
 
 // ─── Tracker ───────────────────────────
+function openExpenseModal() {
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('expenseDate').value   = today;
+  document.getElementById('expenseDesc').value   = '';
+  document.getElementById('expenseCat').value    = '';
+  document.getElementById('expenseAmount').value = '';
+  document.getElementById('expenseModal').style.display = 'flex';
+  setTimeout(() => document.getElementById('expenseDesc').focus(), 50);
+}
+function closeExpenseModal(e) {
+  if (e && e.target !== document.getElementById('expenseModal')) return;
+  document.getElementById('expenseModal').style.display = 'none';
+}
 function addExpense() {
   const date   = document.getElementById('expenseDate').value;
   const desc   = document.getElementById('expenseDesc').value.trim();
@@ -741,9 +754,7 @@ function addExpense() {
   if (!date || !desc || !cat || !amount || amount <= 0) { showToast('Fill in all fields', 'error'); return; }
   state.expenses.push({ id: Date.now(), date, description: desc, category: cat, amount });
   saveState();
-  document.getElementById('expenseDesc').value   = '';
-  document.getElementById('expenseAmount').value = '';
-  document.getElementById('expenseCat').value    = '';
+  document.getElementById('expenseModal').style.display = 'none';
   renderTracker();
   showToast('Expense added!', 'success');
 }

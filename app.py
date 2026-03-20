@@ -98,6 +98,7 @@ def init_db():
     for migration in [
         "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS plan TEXT DEFAULT 'basic'",
         "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS password_hash TEXT",
+        "ALTER TABLE user_data ADD COLUMN IF NOT EXISTS expenses TEXT DEFAULT '[]'",
     ]:
         conn.execute(migration)
         conn.commit()
@@ -913,15 +914,17 @@ def save_data():
     bills       = json.dumps(data.get('bills', []))
     habits      = json.dumps(data.get('habits', []))
     budget_plan = json.dumps(data.get('budget_plan')) if data.get('budget_plan') else None
+    expenses    = json.dumps(data.get('expenses', []))
 
     conn = get_db()
     conn.execute(
-        '''INSERT INTO user_data (subscription_id, income, bills, habits, budget_plan)
-           VALUES (%s, %s, %s, %s, %s)
+        '''INSERT INTO user_data (subscription_id, income, bills, habits, budget_plan, expenses)
+           VALUES (%s, %s, %s, %s, %s, %s)
            ON CONFLICT(subscription_id) DO UPDATE SET
                income=excluded.income, bills=excluded.bills, habits=excluded.habits,
-               budget_plan=excluded.budget_plan, updated_at=CURRENT_TIMESTAMP''',
-        (user_id, income, bills, habits, budget_plan)
+               budget_plan=excluded.budget_plan, expenses=excluded.expenses,
+               updated_at=CURRENT_TIMESTAMP''',
+        (user_id, income, bills, habits, budget_plan, expenses)
     )
     conn.commit()
     conn.close()
@@ -952,9 +955,10 @@ def load_data():
 
     return jsonify({'data': {
         'income':      row['income'] or 0,
-        'bills':       json.loads(row['bills']  or '[]'),
-        'habits':      json.loads(row['habits'] or '[]'),
+        'bills':       json.loads(row['bills']     or '[]'),
+        'habits':      json.loads(row['habits']    or '[]'),
         'budget_plan': json.loads(row['budget_plan']) if row['budget_plan'] else None,
+        'expenses':    json.loads(row['expenses']  or '[]'),
     }})
 
 

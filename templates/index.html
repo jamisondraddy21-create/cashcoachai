@@ -228,24 +228,12 @@
 <!-- ═══ TRACKER ═══ -->
 <div class="view" id="view-tracker">
   <div class="main-container">
-    <div class="page-header">
-      <h2>Expense Tracker</h2>
-      <p>Log daily spending and see how you track against your budget</p>
-    </div>
-
-    <!-- Add expense -->
-    <div class="card">
-      <div class="card-header"><h3>Add Expense</h3></div>
-      <div class="expense-form">
-        <input type="date"   id="expenseDate"   class="input-field" />
-        <input type="text"   id="expenseDesc"   class="input-field" placeholder="Description (e.g. Starbucks)" />
-        <select              id="expenseCat"    class="input-field"><option value="">Category…</option></select>
-        <div class="input-prefix-wrap">
-          <span>$</span>
-          <input type="number" id="expenseAmount" class="input-field bare" placeholder="Amount" min="0" step="0.01" />
-        </div>
-        <button class="btn-primary" onclick="addExpense()">+ Add</button>
+    <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
+      <div>
+        <h2>Expense Tracker</h2>
+        <p>Log daily spending and see how you track against your budget</p>
       </div>
+      <button class="btn-primary" onclick="openExpenseModal()" style="flex-shrink:0">+ Add Expense</button>
     </div>
 
     <!-- Monthly progress -->
@@ -571,6 +559,45 @@
       <a href="/logout" class="sub-link" style="font-size:14px;color:var(--text-2)">Log out of your account</a>
     </div>
 
+  </div>
+</div>
+
+<!-- ═══ ADD EXPENSE MODAL ═══ -->
+<div class="modal-backdrop" id="expenseModal" onclick="closeExpenseModal(event)" style="display:none">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Add Expense</h3>
+      <button class="modal-close" onclick="closeExpenseModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <label class="modal-label">Expense Name</label>
+      <input type="text" id="expenseDesc" class="input-field" placeholder="e.g. Starbucks, Rent, Gym…" />
+
+      <label class="modal-label">Category</label>
+      <select id="expenseCat" class="input-field">
+        <option value="">Select category…</option>
+        <option value="Food">🍔 Food</option>
+        <option value="Housing">🏠 Housing</option>
+        <option value="Transport">🚗 Transport</option>
+        <option value="Entertainment">🎬 Entertainment</option>
+        <option value="Shopping">🛍️ Shopping</option>
+        <option value="Health">💊 Health</option>
+        <option value="Other">📦 Other</option>
+      </select>
+
+      <label class="modal-label">Amount</label>
+      <div class="input-prefix-wrap">
+        <span>$</span>
+        <input type="number" id="expenseAmount" class="input-field bare" placeholder="0.00" min="0" step="0.01" />
+      </div>
+
+      <label class="modal-label">Date</label>
+      <input type="date" id="expenseDate" class="input-field" />
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeExpenseModal()">Cancel</button>
+      <button class="btn-primary" onclick="addExpense()">Save Expense</button>
+    </div>
   </div>
 </div>
 
