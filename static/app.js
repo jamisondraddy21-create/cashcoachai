@@ -61,29 +61,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('expenseDate').value = new Date().toISOString().split('T')[0];
 
   if (window.CCA_LOGGED_IN) {
-    // Always hit the server first — server is the source of truth for logged-in users.
-    // Only fall back to localStorage if the server returns nothing.
+    // Server is always the source of truth. Never read income/bills/habits/budgetPlan
+    // from localStorage. If server returns nothing, start with empty state.
     const serverData = await fetchServerData();
-    if (serverData) {
-      state.income     = serverData.income      || 0;
-      state.bills      = serverData.bills       || [];
-      state.habits     = serverData.habits      || [];
-      state.budgetPlan = serverData.budget_plan || null;
-      // Expenses, portfolio, and chat are localStorage-only — preserve them
-      try {
-        const ls = localStorage.getItem('cca_v1');
-        if (ls) {
-          const saved = JSON.parse(ls);
-          state.expenses    = saved.expenses    || [];
-          state.portfolio   = saved.portfolio   || [];
-          state.chatHistory = saved.chatHistory || [];
-        }
-      } catch (_) {}
-      try { localStorage.setItem('cca_v1', JSON.stringify(state)); } catch (_) {}
-    } else {
-      // Server returned nothing (new account, error) — fall back to localStorage
-      loadState();
-    }
+    state.income     = serverData ? (serverData.income      || 0)    : 0;
+    state.bills      = serverData ? (serverData.bills       || [])   : [];
+    state.habits     = serverData ? (serverData.habits      || [])   : [];
+    state.budgetPlan = serverData ? (serverData.budget_plan || null) : null;
+    // Expenses, portfolio, and chat are never stored server-side — read from localStorage only
+    try {
+      const ls = localStorage.getItem('cca_v1');
+      if (ls) {
+        const saved = JSON.parse(ls);
+        state.expenses    = saved.expenses    || [];
+        state.portfolio   = saved.portfolio   || [];
+        state.chatHistory = saved.chatHistory || [];
+      }
+    } catch (_) {}
+    try { localStorage.setItem('cca_v1', JSON.stringify(state)); } catch (_) {}
   } else {
     loadState();
   }
@@ -408,9 +403,21 @@ function saveState() {
   if (window.CCA_LOGGED_IN) saveDataToServer();
 }
 function loadState() {
+  // Only restores fields that are never stored on the server.
+  // income, bills, habits, budgetPlan always come from /api/load-data for logged-in users.
   try {
     const s = localStorage.getItem('cca_v1');
-    if (s) state = { ...state, ...JSON.parse(s) };
+    if (!s) return;
+    const saved = JSON.parse(s);
+    if (!window.CCA_LOGGED_IN) {
+      // Demo / not logged in — localStorage is the only source, restore everything
+      state = { ...state, ...saved };
+    } else {
+      // Logged in — only restore fields the server doesn't own
+      state.expenses    = saved.expenses    || [];
+      state.portfolio   = saved.portfolio   || [];
+      state.chatHistory = saved.chatHistory || [];
+    }
   } catch (_) {}
 }
 
@@ -447,10 +454,10 @@ async function fetchServerData() {
 async function loadDataFromServer() {
   const serverData = await fetchServerData();
   if (serverData) {
-    state.income     = serverData.income      || state.income;
-    state.bills      = serverData.bills?.length  ? serverData.bills  : state.bills;
-    state.habits     = serverData.habits?.length ? serverData.habits : state.habits;
-    state.budgetPlan = serverData.budget_plan || state.budgetPlan;
+    state.income     = serverData.income      || 0;
+    state.bills      = serverData.bills       || [];
+    state.habits     = serverData.habits      || [];
+    state.budgetPlan = serverData.budget_plan || null;
     saveState();
   }
 }
