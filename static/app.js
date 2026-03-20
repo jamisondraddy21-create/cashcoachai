@@ -71,6 +71,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (state.budgetPlan) {
     showNavTabs();
     navigate('dashboard');
+    renderDashboard();
   } else {
     document.getElementById('navTabs').style.visibility = 'hidden';
     showView('setup');
@@ -462,6 +463,7 @@ function navigate(name) {
   }
   showView(name);
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.view === name));
+  if (name === 'dashboard') renderDashboard();
   if (name === 'tracker')  renderTracker();
   if (name === 'investor') renderInvestorHub();
 }
