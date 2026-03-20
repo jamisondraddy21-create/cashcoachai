@@ -413,13 +413,21 @@ def subscribe_success():
             (customer_id,)
         ).fetchone()
 
+        # Fall back to email match (handles re-subscriptions with a new Stripe customer ID)
+        if not existing and email:
+            existing = conn.execute(
+                'SELECT token FROM subscriptions WHERE lower(email) = lower(%s) ORDER BY created_at DESC LIMIT 1',
+                (email,)
+            ).fetchone()
+
         if existing:
             token = existing['token']
             conn.execute(
                 '''UPDATE subscriptions
-                   SET stripe_subscription_id=%s, email=%s, status=%s, plan=%s, updated_at=CURRENT_TIMESTAMP
-                   WHERE stripe_customer_id=%s''',
-                (subscription_id, email, status, plan, customer_id)
+                   SET stripe_customer_id=%s, stripe_subscription_id=%s, email=%s,
+                       status=%s, plan=%s, updated_at=CURRENT_TIMESTAMP
+                   WHERE token=%s''',
+                (customer_id, subscription_id, email, status, plan, token)
             )
         else:
             token  = str(uuid.uuid4())
@@ -810,7 +818,8 @@ def api_login():
     row  = conn.execute(
         '''SELECT id, token, plan, status, password_hash
            FROM subscriptions
-           WHERE lower(email)=%s AND password_hash IS NOT NULL''',
+           WHERE lower(email)=%s AND password_hash IS NOT NULL
+           ORDER BY created_at DESC LIMIT 1''',
         (email,)
     ).fetchone()
     conn.close()
