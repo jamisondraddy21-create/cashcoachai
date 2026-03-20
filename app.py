@@ -899,7 +899,7 @@ def api_set_password():
 @app.route('/api/save-data', methods=['POST'])
 def save_data():
     data  = request.json or {}
-    token = request.cookies.get('cca_token', '')
+    token = request.cookies.get('cca_token', '') or request.args.get('token', '')
     if not token:
         return jsonify({'error': 'Not authenticated.'}), 401
 
@@ -933,7 +933,7 @@ def save_data():
 
 @app.route('/api/load-data')
 def load_data():
-    token = request.cookies.get('cca_token', '')
+    token = request.cookies.get('cca_token', '') or request.args.get('token', '')
     if not token:
         return jsonify({'data': None})
 
@@ -1072,6 +1072,7 @@ def setup():
         plan=user['plan'] or 'basic',
         logged_in=True,
         user_email=(user['email'] or '').lower(),
+        token=user['token'],
     ))
     _auth_cookie(resp, user['token'])
     return resp
@@ -1081,7 +1082,7 @@ def setup():
 def app_view():
     """The dashboard — requires a valid cca_token cookie. Demo mode via ?demo=1."""
     if request.args.get('demo') == '1':
-        return render_template('index.html', plan='investor', logged_in=False, user_email='')
+        return render_template('index.html', plan='investor', logged_in=False, user_email='', token='')
 
     url_token = request.args.get('token', '')
     user      = get_current_user(url_token=url_token)
@@ -1094,6 +1095,7 @@ def app_view():
         plan=user['plan'] or 'basic',
         logged_in=True,
         user_email=(user['email'] or '').lower(),
+        token=user['token'],
     ))
     _auth_cookie(resp, user['token'])
     return resp

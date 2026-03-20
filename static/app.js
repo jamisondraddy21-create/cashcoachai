@@ -389,9 +389,11 @@ function loadState() {
 async function saveDataToServer() {
   if (!window.CCA_LOGGED_IN) return;
   try {
-    await fetch('/api/save-data', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const url = window.CCA_TOKEN ? `/api/save-data?token=${window.CCA_TOKEN}` : '/api/save-data';
+    await fetch(url, {
+      method:      'POST',
+      credentials: 'include',
+      headers:     { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         income:      state.income,
         bills:       state.bills,
@@ -404,7 +406,8 @@ async function saveDataToServer() {
 
 async function loadDataFromServer() {
   try {
-    const res  = await fetch('/api/load-data');
+    const url = window.CCA_TOKEN ? `/api/load-data?token=${window.CCA_TOKEN}` : '/api/load-data';
+    const res  = await fetch(url, { credentials: 'include' });
     const data = await res.json();
     if (data.data) {
       // Server data overrides localStorage — source of truth for logged-in users
