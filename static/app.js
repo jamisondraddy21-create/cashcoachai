@@ -1476,7 +1476,7 @@ async function sendInvestMessage() {
         if (raw === '[DONE]') break;
         try {
           const d = JSON.parse(raw);
-          if (d.text) { full += d.text; bubble.textContent = full; scrollInvestChat(); }
+          if (d.text) { full += d.text; bubble.textContent = stripMarkdown(full); scrollInvestChat(); }
         } catch (_) {}
       }
     }
